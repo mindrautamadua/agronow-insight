@@ -134,15 +134,15 @@ export default function LoginPage() {
       <div className="relative z-10 grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         {/* Brand panel */}
         <div className={`relative hidden lg:flex flex-col justify-between p-12 xl:p-16 border-r ${isLight ? "border-slate-200/70" : "border-white/5"}`}>
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex items-center gap-3.5">
-            <div className={`rounded-2xl overflow-hidden ring-1 ${isLight ? "shadow-md shadow-slate-300/40 ring-slate-200" : "shadow-lg shadow-black/30 ring-white/10"}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/agronow-icon.png" alt="Agronow Insight" className="h-12 w-12 object-cover" />
-            </div>
-            <div>
-              <p className="text-base font-bold tracking-tight">Agronow Insight</p>
-              <p className={`text-[11px] -mt-0.5 ${isLight ? "text-slate-500" : "text-slate-400"}`}>Platform Pembelajaran & Pengembangan SDM</p>
-            </div>
+          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className={`inline-flex items-center gap-4 self-start rounded-2xl px-4 py-2.5 ${
+              isLight ? "bg-slate-900/90 ring-1 ring-slate-900/10 shadow-md shadow-slate-300/40" : "bg-white/[0.05] ring-1 ring-white/10"
+            }`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/img/logo_danantara.png" alt="Danantara Indonesia" className="h-9 w-auto" />
+            <span className="h-8 w-px bg-white/25" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/img/logo_ptpn.png" alt="PT Perkebunan Nusantara" className="h-9 w-auto" />
           </motion.div>
 
           <div className="max-w-md">
@@ -188,13 +188,16 @@ export default function LoginPage() {
         {/* Form panel */}
         <div className="flex items-center justify-center px-5 py-10 sm:px-8">
           <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="w-full max-w-[380px]">
-            <div className="lg:hidden flex flex-col items-center mb-8">
-              <div className={`rounded-2xl overflow-hidden mb-3 ${isLight ? "shadow-md shadow-slate-300/40 ring-1 ring-slate-200" : "shadow-lg shadow-black/40"}`}>
+            <div className="lg:hidden flex justify-center mb-8">
+              <div className={`inline-flex items-center gap-3.5 rounded-2xl px-4 py-2.5 ${
+                isLight ? "bg-slate-900/90 ring-1 ring-slate-900/10 shadow-md shadow-slate-300/40" : "bg-white/[0.05] ring-1 ring-white/10"
+              }`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/agronow-icon.png" alt="Agronow Insight" className="h-14 w-14 object-cover" />
+                <img src="/img/logo_danantara.png" alt="Danantara Indonesia" className="h-7 w-auto" />
+                <span className="h-6 w-px bg-white/25" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/img/logo_ptpn.png" alt="PT Perkebunan Nusantara" className="h-7 w-auto" />
               </div>
-              <p className="text-lg font-bold">Agronow Insight</p>
-              <p className={`text-[11px] ${isLight ? "text-slate-500" : "text-slate-400"}`}>Learning & Development Platform</p>
             </div>
 
             <div className="relative">
@@ -202,6 +205,11 @@ export default function LoginPage() {
               <div className={`relative rounded-3xl border backdrop-blur-2xl p-7 ${
                 isLight ? "border-slate-200/80 bg-white/85 shadow-[0_20px_70px_-20px_rgba(15,23,42,0.18)]" : "border-white/10 bg-[#0a1020]/80 shadow-[0_20px_70px_-20px_rgba(0,0,0,0.8)]"
               }`}>
+                <div className="flex justify-center mb-5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/img/logo-login.png" alt="Agronow" className="h-12 w-auto" />
+                </div>
+
                 <div className="mb-6">
                   <h2 className="text-xl font-bold tracking-tight">Selamat datang 👋</h2>
                   <p className={`text-[12px] mt-1 ${isLight ? "text-slate-500" : "text-slate-400"}`}>Masuk untuk mengelola program L&amp;D.</p>
@@ -253,10 +261,6 @@ export default function LoginPage() {
                 </form>
               </div>
             </div>
-
-            <p className={`text-[11px] text-center mt-6 ${isLight ? "text-slate-500" : "text-slate-500"}`}>
-              Akun default: <span className="font-semibold">admin / admin123</span> — ubah setelah masuk.
-            </p>
           </motion.div>
         </div>
       </div>

@@ -84,7 +84,7 @@ export function Header() {
           </button>
 
           {userOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div className="absolute right-0 mt-2 w-56 bg-[var(--bg-card-solid)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-[var(--border)]">
                 <p className="text-xs font-semibold text-[var(--foreground)] truncate">{displayName}</p>
                 <p className="text-[10px] text-[var(--muted)] truncate">@{user?.username ?? "—"} · {roleLabel}</p>
