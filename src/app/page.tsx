@@ -9,6 +9,7 @@ import {
 import { fetchDashboard, fetchCapaian, fetchBiaya, fetchDaftar, type DashboardData, type DashMonth, type CapaianData, type JplEmployee, type BiayaData, type BiayaBar, type DaftarData, type DaftarTraining, type DaftarPeserta } from "@/lib/data";
 import { fmtRupiah, fmtNum, fmtDate } from "@/lib/utils";
 import { PageSkeleton, ListSkeleton, StatCardsSkeleton, ChartSkeleton, Avatar } from "@/components/ui";
+import { TrendAreaChart, CompositionDonut, CapaianHistogram, EfficiencyScatter } from "@/components/charts";
 
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const TABS = ["Dashboard", "Capaian JPL", "Biaya", "Daftar Pelatihan"] as const;
@@ -171,10 +172,14 @@ export default function DashboardPage() {
             onPick={bln => setDetailReq({ mode: "bulan", bln })} />
 
           <div className="grid lg:grid-cols-2 gap-4">
-            <BarCard title="JPL per Level BOD" icon={Layers} rows={data.perLevel}
-              onPick={l => setDetailReq({ mode: "level", level: l })} />
-            <BarCard title="JPL per Kategori" icon={BookOpen} rows={data.perKategori}
-              onPick={l => setDetailReq({ mode: "kategori", kategori: l })} />
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+              <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2 mb-4"><Layers className="w-4 h-4 text-emerald-500" /> Komposisi JPL per Level BOD</h3>
+              <CompositionDonut rows={data.perLevel} onPick={l => setDetailReq({ mode: "level", level: l })} />
+            </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+              <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2 mb-4"><BookOpen className="w-4 h-4 text-emerald-500" /> Komposisi JPL per Kategori</h3>
+              <CompositionDonut rows={data.perKategori} onPick={l => setDetailReq({ mode: "kategori", kategori: l })} />
+            </div>
           </div>
 
           {data.perDivisi.length > 0 && (
@@ -207,9 +212,6 @@ function Selector({ icon: Icon, value, onChange, options }: {
 }
 
 function MonthlyTrend({ monthly, metric, setMetric, onPick }: { monthly: DashMonth[]; metric: Metric; setMetric: (m: Metric) => void; onPick?: (bln: number) => void }) {
-  const max = Math.max(1, ...monthly.map(m => m[metric]));
-  const valStr = (m: DashMonth) => metric === "biaya" ? fmtRupiah(m.biaya) : fmtNum(m[metric]);
-
   const insights = useMemo(() => buildInsights(monthly), [monthly]);
 
   return (
@@ -217,7 +219,7 @@ function MonthlyTrend({ monthly, metric, setMetric, onPick }: { monthly: DashMon
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
           <Clock className="w-4 h-4 text-emerald-500" /> Tren Bulanan
-          <span className="text-[var(--muted)] font-normal text-xs">· warna sel = intensitas</span>
+          <span className="text-[var(--muted)] font-normal text-xs">· klik titik untuk rincian</span>
         </h3>
         <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--bg-card2)] p-0.5">
           {METRICS.map(m => (
@@ -230,25 +232,7 @@ function MonthlyTrend({ monthly, metric, setMetric, onPick }: { monthly: DashMon
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {monthly.map(m => {
-          const active = m.sesi > 0 || m.jpl > 0 || m.peserta > 0;
-          const intensity = active ? 0.08 + 0.34 * (m[metric] / max) : 0;
-          const clickable = active && !!onPick;
-          return (
-            <button key={m.bln} type="button" disabled={!clickable}
-              onClick={clickable ? () => onPick!(m.bln) : undefined}
-              className={`text-left rounded-xl border border-[var(--border)] p-3 transition-colors ${clickable ? "cursor-pointer hover:border-[var(--primary)]/40" : "cursor-default"}`}
-              style={{ backgroundColor: active ? `rgba(16,185,129,${intensity})` : "transparent" }}>
-              <p className="text-[11px] text-[var(--muted)]">{BULAN[m.bln - 1]}</p>
-              <p className="text-xl font-bold text-[var(--foreground)] tabular-nums mt-0.5">{active ? valStr(m) : "—"}</p>
-              <p className="text-[10px] text-[var(--muted)] mt-0.5">
-                {active ? `${m.sesi} sesi · ${fmtRupiah(m.biaya)}` : "tidak ada kegiatan"}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+      <TrendAreaChart data={monthly} metric={metric} onPick={onPick} />
 
       {insights.length > 0 && (
         <div className="mt-5 pt-4 border-t border-[var(--border)]">
@@ -372,6 +356,12 @@ function CapaianView({ data, loading, onPick }: { data: CapaianData | null; load
             </div>
           );
         })}
+      </div>
+
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+        <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-emerald-500" /> Distribusi Capaian JPL</h3>
+        <p className="text-[11px] text-[var(--muted)] mb-3">Sebaran jumlah karyawan per rentang JPL · target {target} JPL/tahun</p>
+        <CapaianHistogram employees={pool} target={target} />
       </div>
 
       <div className="flex items-center justify-end">
@@ -958,6 +948,14 @@ function DaftarView({ data, loading, tahun }: { data: DaftarData | null; loading
           <DaftarPesertaTable rows={fp} />
         )}
       </div>
+
+      {mode === "pelatihan" && ft.length > 0 && (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] p-4 sm:p-5">
+          <h3 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-emerald-500" /> Efisiensi Biaya vs JPL</h3>
+          <p className="text-[11px] text-[var(--muted)] mb-2">Deteksi pelatihan mahal dengan jam relatif sedikit — mengikuti filter di atas</p>
+          <EfficiencyScatter trainings={ft} />
+        </div>
+      )}
     </div>
   );
 }

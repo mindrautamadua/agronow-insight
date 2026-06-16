@@ -6,7 +6,7 @@
  *  - Aset statis hashed (_next/static, ikon, gambar): cache-first (immutable).
  *  - Lainnya: lewat ke jaringan apa adanya.
  */
-const VERSION = "agronow-v2";
+const VERSION = "agronow-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const OFFLINE_URL = "/offline.html";

@@ -128,16 +128,11 @@ export function Sidebar() {
         "flex items-center border-b border-[var(--border)] shrink-0 transition-all duration-300",
         collapsed ? "justify-center px-0 py-[18px]" : "gap-3 px-5 py-[18px]"
       )}>
-        <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shadow-lg shadow-black/20 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/agronow-icon.png" alt="Agronow Insight" className="w-full h-full object-cover" />
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/logo-login.png" alt="Agronow" className={cn("w-auto object-contain shrink-0", collapsed ? "h-8" : "h-9")} />
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-[var(--foreground)] text-[15px] leading-tight tracking-tight whitespace-nowrap">
-              Agro<span className="text-emerald-400">now</span>
-            </div>
-            <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-wider mt-0.5 whitespace-nowrap">
+            <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-wider whitespace-nowrap">
               Insight
             </div>
           </div>
