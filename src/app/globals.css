@@ -1,0 +1,611 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b1120;
+  /* Glassmorphism: surface translucent, di-blur via aturan .bg-[var(--bg-card)] di bawah. */
+  --bg-card: rgba(17, 24, 39, 0.48);
+  --bg-card2: rgba(26, 34, 53, 0.32);
+  --bg-card-solid: #131b2c;   /* panel modal: solid, bukan kaca */
+  --border: rgba(255, 255, 255, 0.16);
+  --border-md: rgba(255, 255, 255, 0.12);
+  --foreground: #f1f5f9;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #8b5cf6;
+  /* legacy aliases kept for backward compat */
+  --secondary: #1e293b;
+  --accent: #2563eb;
+  --card: rgba(17, 24, 39, 0.8);
+  --card-border: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme="light"] {
+  --background: #f8fafc;
+  /* Glassmorphism (light): surface putih translucent + blur. */
+  --bg-card: rgba(255, 255, 255, 0.45);
+  --bg-card2: rgba(241, 245, 249, 0.36);
+  --bg-card-solid: #ffffff;   /* panel modal: solid, bukan kaca */
+  --border: rgba(255, 255, 255, 0.65);
+  --border-md: rgba(0, 0, 0, 0.12);
+  --foreground: #0f172a;
+  --muted: #64748b;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --success: #059669;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --info: #7c3aed;
+  --secondary: #e2e8f0;
+  --accent: #2563eb;
+  --card: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(0, 0, 0, 0.07);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: #e2e8f0;
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   GLASSMORPHISM
+   ─────────────────────────────────────────────────────────────────────────────
+   Diterapkan terpusat: token --bg-card / --bg-card2 dibuat translucent (lihat
+   :root & [data-theme]). Di sini kita (1) blur isi di belakang tiap permukaan
+   yang memakai class bg-[var(--bg-card)] / bg-[var(--bg-card2)] — mencakup kartu,
+   sidebar, panel modal, dropdown — tanpa menyentuh markup; dan (2) memberi latar
+   "aurora" berwarna di belakang shell agar efek kaca terlihat.
+   ═════════════════════════════════════════════════════════════════════════════ */
+:is(.bg-\[var\(--bg-card\)\], .bg-\[var\(--bg-card2\)\]) {
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+}
+
+/* Panel modal (anak langsung overlay .fixed.inset-0.z-50) dibuat SOLID supaya
+   konten di belakang tidak tembus & teks tetap fokus. Kartu lain tetap kaca. */
+.fixed.inset-0.z-50 > .bg-\[var\(--bg-card\)\] {
+  background-color: var(--bg-card-solid);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Rim kaca terang + bayangan mengambang (hanya permukaan utama, bukan inset/input). */
+.bg-\[var\(--bg-card\)\] {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    0 14px 40px -16px rgba(0, 0, 0, 0.55);
+}
+[data-theme="light"] .bg-\[var\(--bg-card\)\] {
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.85),
+    0 14px 40px -18px rgba(15, 23, 42, 0.22);
+}
+
+/* Latar aurora di shell (div terluar AppShell memakai bg-[var(--background)]).
+   Aurora ditaruh di ::before yang lebih besar dari viewport lalu di-drift pelan
+   (transform → hemat repaint). Konten asli tetap di atasnya. */
+.bg-\[var\(--background\)\] {
+  background-color: var(--background);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.bg-\[var\(--background\)\]::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(48rem 48rem at 10% 8%, rgba(59, 130, 246, 0.38), transparent 60%),
+    radial-gradient(44rem 44rem at 88% 4%, rgba(139, 92, 246, 0.34), transparent 58%),
+    radial-gradient(50rem 50rem at 78% 92%, rgba(16, 185, 129, 0.30), transparent 58%),
+    radial-gradient(40rem 40rem at 4% 88%, rgba(236, 72, 153, 0.28), transparent 56%);
+  will-change: transform;
+  animation: aurora-drift 32s ease-in-out infinite alternate;
+}
+[data-theme="light"] .bg-\[var\(--background\)\]::before {
+  background-image:
+    radial-gradient(48rem 48rem at 10% 8%, rgba(59, 130, 246, 0.30), transparent 60%),
+    radial-gradient(44rem 44rem at 88% 4%, rgba(168, 85, 247, 0.28), transparent 58%),
+    radial-gradient(50rem 50rem at 78% 92%, rgba(16, 185, 129, 0.26), transparent 58%),
+    radial-gradient(40rem 40rem at 4% 88%, rgba(244, 114, 182, 0.24), transparent 56%);
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2.5%, -2%, 0) scale(1.1) rotate(1.5deg); }
+  100% { transform: translate3d(-2%, 1.5%, 0) scale(1.06) rotate(-1deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-\[var\(--background\)\]::before { animation: none; }
+}
+
+/* Fallback: bila backdrop-filter tak didukung, kembalikan surface ke opaque
+   supaya teks tetap terbaca (tanpa blur). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --bg-card: #111827; --bg-card2: #1a2235; }
+  [data-theme="light"] { --bg-card: #ffffff; --bg-card2: #f1f5f9; }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   READABILITY — FONT-SIZE FLOOR (graduated uplift)
+   ─────────────────────────────────────────────────────────────────────────────
+   UI/UX best practice: no readable content below ~11px; body text ~13px.
+   The original tiny utilities (text-[9px], text-[10px], …) are LEFT in the markup;
+   their RENDERED size is uplifted centrally here so the change is consistent and
+   reversible in one place. Mirrors the light-mode literal-remap pattern below.
+
+     7–8px            → 11px   (micro badges / flags only)
+     9–10px           → 12px   (captions, labels, dense table cells)
+     11px · 12px · xs → 13px   (body content)
+     sm (14px) and up → unchanged (lead body / headings keep their hierarchy)
+   ═════════════════════════════════════════════════════════════════════════════ */
+.text-\[7px\],
+.text-\[8px\] { font-size: 11px !important; }
+
+.text-\[9px\],
+.text-\[10px\] { font-size: 12px !important; }
+
+.text-\[11px\],
+.text-\[12px\],
+.text-xs { font-size: 13px !important; }
+
+.file\:text-\[11px\]::file-selector-button { font-size: 13px !important; }
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   LIGHT MODE OVERRIDES — Comprehensive Tailwind literal remapping
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Text colors ─────────────────────────────────────────────────────────── */
+[data-theme="light"] .text-white {
+  color: var(--foreground) !important;
+}
+
+/* Exception: `.text-white` paired with a solid saturated background (500/600/700)
+   stays white — these are filled buttons/badges where the dark background gives
+   white text correct contrast (e.g. bg-blue-500 hover:bg-blue-600 text-white).
+   Without this override, the light-mode `.text-white → --foreground` rule above
+   leaves dark text on a dark blue/emerald/etc. button (low-contrast, unreadable). */
+[data-theme="light"] .text-white.bg-blue-500,    [data-theme="light"] .text-white.bg-blue-600,    [data-theme="light"] .text-white.bg-blue-700,
+[data-theme="light"] .text-white.bg-sky-500,     [data-theme="light"] .text-white.bg-sky-600,     [data-theme="light"] .text-white.bg-sky-700,
+[data-theme="light"] .text-white.bg-cyan-500,    [data-theme="light"] .text-white.bg-cyan-600,    [data-theme="light"] .text-white.bg-cyan-700,
+[data-theme="light"] .text-white.bg-teal-500,    [data-theme="light"] .text-white.bg-teal-600,    [data-theme="light"] .text-white.bg-teal-700,
+[data-theme="light"] .text-white.bg-emerald-500, [data-theme="light"] .text-white.bg-emerald-600, [data-theme="light"] .text-white.bg-emerald-700,
+[data-theme="light"] .text-white.bg-green-500,   [data-theme="light"] .text-white.bg-green-600,   [data-theme="light"] .text-white.bg-green-700,
+[data-theme="light"] .text-white.bg-indigo-500,  [data-theme="light"] .text-white.bg-indigo-600,  [data-theme="light"] .text-white.bg-indigo-700,
+[data-theme="light"] .text-white.bg-violet-500,  [data-theme="light"] .text-white.bg-violet-600,  [data-theme="light"] .text-white.bg-violet-700,
+[data-theme="light"] .text-white.bg-purple-500,  [data-theme="light"] .text-white.bg-purple-600,  [data-theme="light"] .text-white.bg-purple-700,
+[data-theme="light"] .text-white.bg-pink-500,    [data-theme="light"] .text-white.bg-pink-600,    [data-theme="light"] .text-white.bg-pink-700,
+[data-theme="light"] .text-white.bg-rose-500,    [data-theme="light"] .text-white.bg-rose-600,    [data-theme="light"] .text-white.bg-rose-700,
+[data-theme="light"] .text-white.bg-red-500,     [data-theme="light"] .text-white.bg-red-600,     [data-theme="light"] .text-white.bg-red-700,
+[data-theme="light"] .text-white.bg-orange-500,  [data-theme="light"] .text-white.bg-orange-600,  [data-theme="light"] .text-white.bg-orange-700,
+[data-theme="light"] .text-white.bg-amber-500,   [data-theme="light"] .text-white.bg-amber-600,   [data-theme="light"] .text-white.bg-amber-700,
+[data-theme="light"] .text-white.bg-yellow-500,  [data-theme="light"] .text-white.bg-yellow-600,  [data-theme="light"] .text-white.bg-yellow-700 {
+  color: #ffffff !important;
+}
+/* Note: NOT including bg-slate-700/800/900 — those are remapped to light gray
+   in light mode (see slate solid backgrounds section), so white text on them
+   would be invisible. The default dark-text remap is correct there. */
+
+/* Exception: `.text-white` on a gradient fill (bg-gradient-to-*) stays white.
+   Gradient avatars/buttons in this app use saturated stops (blue/indigo/emerald
+   400–700), so the dark fill needs white text. The solid-bg exception above can't
+   catch these because the color lives in from / to gradient stops, not a single bg class. */
+[data-theme="light"] .text-white.bg-gradient-to-r,
+[data-theme="light"] .text-white.bg-gradient-to-l,
+[data-theme="light"] .text-white.bg-gradient-to-t,
+[data-theme="light"] .text-white.bg-gradient-to-b,
+[data-theme="light"] .text-white.bg-gradient-to-tr,
+[data-theme="light"] .text-white.bg-gradient-to-tl,
+[data-theme="light"] .text-white.bg-gradient-to-br,
+[data-theme="light"] .text-white.bg-gradient-to-bl {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-slate-300 {
+  color: #1e293b !important;
+}
+
+[data-theme="light"] .text-slate-400 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+[data-theme="light"] .text-slate-600 {
+  color: #475569 !important;   /* WCAG AAA on white (~7.5:1) — sebelumnya #94a3b8 fail AA */
+}
+[data-theme="light"] .text-slate-700 {
+  color: #94a3b8 !important;   /* dipertahankan: hirarki "paling muted" (mis. label dekoratif) */
+}
+
+/* ── Accent text colors — darken pastel shades for light (white) surfaces ──── */
+/* Pastel accent text (shades 200–500) was picked for DARK mode; on light cards it
+   washes out (light-on-light). Remap to readable, hue-preserving dark tones.
+   Verified safe: no light-accent text sits on a solid same-color background, and
+   the only dark-by-design surfaces (login, graph canvas) are excluded by force. */
+[data-theme="light"] .text-emerald-200,
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400,
+[data-theme="light"] .text-emerald-500 { color: #047857 !important; } /* emerald-700 */
+
+[data-theme="light"] .text-green-400 { color: #15803d !important; }   /* green-700 */
+[data-theme="light"] .text-teal-300,
+[data-theme="light"] .text-teal-400,
+[data-theme="light"] .text-teal-500  { color: #0f766e !important; }   /* teal-700 */
+
+[data-theme="light"] .text-cyan-200,
+[data-theme="light"] .text-cyan-300,
+[data-theme="light"] .text-cyan-400 { color: #0e7490 !important; }     /* cyan-700 */
+
+[data-theme="light"] .text-sky-300,
+[data-theme="light"] .text-sky-400 { color: #0369a1 !important; }      /* sky-700 */
+
+[data-theme="light"] .text-blue-200,
+[data-theme="light"] .text-blue-300,
+[data-theme="light"] .text-blue-400,
+[data-theme="light"] .text-blue-500 { color: #2563eb !important; }     /* blue-600 (= light --primary) */
+
+[data-theme="light"] .text-indigo-200,
+[data-theme="light"] .text-indigo-300,
+[data-theme="light"] .text-indigo-400 { color: #4f46e5 !important; }   /* indigo-600 */
+
+[data-theme="light"] .text-violet-200,
+[data-theme="light"] .text-violet-300,
+[data-theme="light"] .text-violet-400 { color: #7c3aed !important; }   /* violet-600 (= light --info) */
+
+[data-theme="light"] .text-purple-400 { color: #9333ea !important; }   /* purple-600 */
+
+[data-theme="light"] .text-pink-300,
+[data-theme="light"] .text-pink-400 { color: #db2777 !important; }     /* pink-600 */
+
+[data-theme="light"] .text-rose-200,
+[data-theme="light"] .text-rose-300,
+[data-theme="light"] .text-rose-400 { color: #be123c !important; }     /* rose-700 */
+
+[data-theme="light"] .text-red-300,
+[data-theme="light"] .text-red-400,
+[data-theme="light"] .text-red-500 { color: #dc2626 !important; }      /* red-600 (= light --danger) */
+
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400,
+[data-theme="light"] .text-amber-500 { color: #b45309 !important; }    /* amber-700 */
+
+[data-theme="light"] .text-yellow-400 { color: #a16207 !important; }   /* yellow-700 */
+
+[data-theme="light"] .text-orange-300,
+[data-theme="light"] .text-orange-400 { color: #c2410c !important; }   /* orange-700 */
+
+/* hover: / group-hover: accent text — keep readable on light surfaces too */
+[data-theme="light"] .hover\:text-emerald-200:hover,
+[data-theme="light"] .hover\:text-emerald-300:hover,
+[data-theme="light"] .group:hover .group-hover\:text-emerald-300,
+[data-theme="light"] .group:hover .group-hover\:text-emerald-400 { color: #047857 !important; }
+
+[data-theme="light"] .hover\:text-blue-300:hover,
+[data-theme="light"] .group:hover .group-hover\:text-blue-300 { color: #2563eb !important; }
+
+[data-theme="light"] .hover\:text-indigo-300:hover { color: #4f46e5 !important; }
+[data-theme="light"] .hover\:text-violet-200:hover { color: #7c3aed !important; }
+
+[data-theme="light"] .hover\:text-red-300:hover,
+[data-theme="light"] .hover\:text-red-400:hover { color: #dc2626 !important; }
+
+[data-theme="light"] .hover\:text-amber-300:hover,
+[data-theme="light"] .group:hover .group-hover\:text-amber-300,
+[data-theme="light"] .group:hover .group-hover\:text-amber-400 { color: #b45309 !important; }
+
+/* Opacity-modified accent text (text-X-Y/Z) — these are SEPARATE classes the base
+   rules above miss. Only the readable variants (/60–/90) are darkened; ultra-faint
+   decorative ones (/10) are intentionally left as faint background tints. */
+[data-theme="light"] .text-emerald-400\/70,
+[data-theme="light"] .text-emerald-400\/80,
+[data-theme="light"] .text-emerald-500\/60 { color: #047857 !important; }
+
+[data-theme="light"] .text-blue-200\/90,
+[data-theme="light"] .text-blue-400\/70 { color: #2563eb !important; }
+
+[data-theme="light"] .text-indigo-200\/90,
+[data-theme="light"] .text-indigo-300\/70,
+[data-theme="light"] .text-indigo-300\/80,
+[data-theme="light"] .text-indigo-300\/90 { color: #4f46e5 !important; }
+
+[data-theme="light"] .text-violet-300\/80 { color: #7c3aed !important; }
+[data-theme="light"] .text-cyan-300\/80   { color: #0e7490 !important; }
+[data-theme="light"] .text-rose-300\/80   { color: #be123c !important; }
+[data-theme="light"] .text-red-400\/70    { color: #dc2626 !important; }
+
+[data-theme="light"] .text-amber-200\/90,
+[data-theme="light"] .text-amber-300\/80 { color: #b45309 !important; }
+
+/* ── White overlay backgrounds (subtle highlights) ──────────────────────── */
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/\[0\.02\],
+[data-theme="light"] .bg-white\/\[0\.03\],
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+[data-theme="light"] .bg-white\/10,
+[data-theme="light"] .bg-white\/15,
+[data-theme="light"] .bg-white\/20 {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* ── Black overlay DEPTH tints (nesting shading) — NOT modal scrims ────────── */
+/* In dark mode bg-black/10–/20 darken nested rows subtly; in light mode the same
+   becomes a heavy gray slab that kills text contrast (gray-on-gray). Soften to a
+   faint tint. Scrims (/60, /70) are left dark on purpose — they dim modals. */
+[data-theme="light"] .bg-black\/10 { background-color: rgba(0, 0, 0, 0.025) !important; }
+[data-theme="light"] .bg-black\/20 { background-color: rgba(0, 0, 0, 0.05) !important; }
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover,
+[data-theme="light"] .hover\:bg-white\/\[0\.04\]:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme="light"] .hover\:bg-white\/10:hover,
+[data-theme="light"] .hover\:bg-white\/15:hover {
+  background-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+[data-theme="light"] .hover\:text-white:hover,
+[data-theme="light"] .hover\:text-slate-200:hover,
+[data-theme="light"] .hover\:text-slate-300:hover {
+  color: #0f172a !important;
+}
+
+/* ── White borders → light gray ──────────────────────────────────────────── */
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/\[0\.06\] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ── Slate solid backgrounds (used as containers/dividers) ──────────────── */
+/* slate-800 family → light gray panels */
+[data-theme="light"] .bg-slate-800 {
+  background-color: #e2e8f0 !important;
+}
+
+[data-theme="light"] .bg-slate-800\/20,
+[data-theme="light"] .bg-slate-800\/30,
+[data-theme="light"] .bg-slate-800\/40,
+[data-theme="light"] .bg-slate-800\/50 {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+[data-theme="light"] .bg-slate-800\/60,
+[data-theme="light"] .bg-slate-800\/70 {
+  background-color: rgba(226, 232, 240, 0.9) !important;
+}
+
+[data-theme="light"] .hover\:bg-slate-800:hover,
+[data-theme="light"] .hover\:bg-slate-800\/20:hover,
+[data-theme="light"] .hover\:bg-slate-800\/30:hover,
+[data-theme="light"] .hover\:bg-slate-800\/40:hover,
+[data-theme="light"] .hover\:bg-slate-800\/60:hover,
+[data-theme="light"] .hover\:bg-slate-800\/70:hover {
+  background-color: rgba(226, 232, 240, 0.7) !important;
+}
+
+/* slate-900 → near-white card surface */
+[data-theme="light"] .bg-slate-900 {
+  background-color: #f8fafc !important;
+}
+
+[data-theme="light"] .bg-slate-900\/30,
+[data-theme="light"] .bg-slate-900\/40,
+[data-theme="light"] .bg-slate-900\/50,
+[data-theme="light"] .bg-slate-900\/60,
+[data-theme="light"] .bg-slate-900\/80 {
+  background-color: rgba(248, 250, 252, 0.85) !important;
+}
+
+/* slate-700 → mid gray panel */
+[data-theme="light"] .bg-slate-700 {
+  background-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .bg-slate-700\/30,
+[data-theme="light"] .bg-slate-700\/40,
+[data-theme="light"] .bg-slate-700\/50,
+[data-theme="light"] .bg-slate-700\/60 {
+  background-color: rgba(203, 213, 225, 0.6) !important;
+}
+
+/* slate-600 → progress bars / accents */
+[data-theme="light"] .bg-slate-600 {
+  background-color: #94a3b8 !important;
+}
+
+[data-theme="light"] .bg-slate-600\/30,
+[data-theme="light"] .bg-slate-600\/40,
+[data-theme="light"] .bg-slate-600\/60 {
+  background-color: rgba(148, 163, 184, 0.55) !important;
+}
+
+/* slate-500 (badges/dots/tags) */
+[data-theme="light"] .bg-slate-500 {
+  background-color: #64748b !important;
+}
+
+[data-theme="light"] .bg-slate-500\/10,
+[data-theme="light"] .bg-slate-500\/15,
+[data-theme="light"] .bg-slate-500\/20 {
+  background-color: rgba(100, 116, 139, 0.12) !important;
+}
+
+[data-theme="light"] .bg-slate-500\/40,
+[data-theme="light"] .bg-slate-500\/50,
+[data-theme="light"] .bg-slate-500\/60 {
+  background-color: rgba(100, 116, 139, 0.45) !important;
+}
+
+/* ── Slate borders ──────────────────────────────────────────────────────── */
+[data-theme="light"] .border-slate-700,
+[data-theme="light"] .border-slate-700\/30,
+[data-theme="light"] .border-slate-700\/40,
+[data-theme="light"] .border-slate-700\/50,
+[data-theme="light"] .border-slate-700\/60,
+[data-theme="light"] .border-slate-800,
+[data-theme="light"] .border-slate-800\/40,
+[data-theme="light"] .border-slate-800\/60 {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+[data-theme="light"] .border-slate-600,
+[data-theme="light"] .border-slate-600\/30,
+[data-theme="light"] .border-slate-500,
+[data-theme="light"] .border-slate-500\/20,
+[data-theme="light"] .border-slate-500\/30,
+[data-theme="light"] .border-slate-500\/40 {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+[data-theme="light"] .hover\:border-slate-500:hover,
+[data-theme="light"] .hover\:border-slate-600:hover {
+  border-color: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ── Divider colors ─────────────────────────────────────────────────────── */
+[data-theme="light"] .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(0, 0, 0, 0.07) !important;
+}
+
+/* ── Hardcoded hex colors used as modal/card backgrounds ────────────────── */
+[data-theme="light"] .bg-\[\#0f172a\] {
+  background-color: var(--bg-card) !important;
+}
+
+[data-theme="light"] .bg-\[\#1a2235\] {
+  background-color: var(--bg-card2) !important;
+}
+
+/* Gradient backgrounds — soften for light mode */
+[data-theme="light"] .from-amber-500\/5 {
+  --tw-gradient-from: rgba(245, 158, 11, 0.08) !important;
+}
+
+[data-theme="light"] .to-emerald-500\/10 {
+  --tw-gradient-to: rgba(16, 185, 129, 0.12) !important;
+}
+
+/* ── Placeholder text ─────────────────────────────────────────────────── */
+[data-theme="light"] .placeholder\:text-slate-600::placeholder,
+[data-theme="light"] .placeholder\:text-slate-500::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* ── Drop shadows (text on solid colors) ──────────────────────────────── */
+[data-theme="light"] .drop-shadow {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.15)) !important;
+}
+
+/* ── Modal backdrop (already uses rgba inline, but reinforce) ─────────── */
+[data-theme="light"] [style*="rgba(0,0,0,0.7)"] {
+  /* keep the dark backdrop overlay readable in light mode too */
+}
+
+/* ── Dual-range slider (two overlaid inputs; only the thumbs are clickable) ── */
+.range-thumb {
+  pointer-events: none;
+  height: 1rem;
+  margin: 0;
+}
+.range-thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 1rem;
+}
+.range-thumb::-moz-range-track {
+  background: transparent;
+  height: 1rem;
+}
+.range-thumb::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.range-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   SKELETON — placeholder shimmer untuk state preload tiap halaman.
+   Pakai class .skeleton (lihat komponen di components/ui.tsx). Bentuk sudut
+   diatur via class rounded-* di markup; di sini hanya warna dasar + animasi.
+   ═════════════════════════════════════════════════════════════════════════════ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(148, 163, 184, 0.16);
+}
+[data-theme="light"] .skeleton {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13), transparent);
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+[data-theme="light"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+}
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
