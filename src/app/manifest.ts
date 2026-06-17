@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Agronow Insight",
-    short_name: "Agronow Insight",
+    short_name: "Insight",
     description: "Platform Learning & Development — katalog training, peserta, sertifikasi, dan jadwal pelatihan.",
     id: "/",
     start_url: "/",
