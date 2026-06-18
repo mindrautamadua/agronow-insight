@@ -19,7 +19,7 @@ CREATE TABLE app_users (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   username      VARCHAR(64)  NOT NULL,
   nama          VARCHAR(128) NULL,
-  role          ENUM('admin','viewer') NOT NULL DEFAULT 'viewer',
+  role          ENUM('super_admin','admin_holding','admin_anper','admin_regional','viewer_holding','viewer_anper','viewer_regional') NOT NULL DEFAULT 'viewer_regional',
   password_hash VARCHAR(255) NOT NULL,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

@@ -3,6 +3,7 @@
 import { Database, Palette, Info, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/components/ThemeContext";
 import { useAuth } from "@/components/AuthContext";
+import { roleLabel } from "@/lib/roles";
 
 export default function SettingsPage() {
   const { theme, toggleTheme } = useTheme();
@@ -30,7 +31,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <Row label="Nama" value={user?.nama || "—"} />
           <Row label="Username" value={`@${user?.username ?? "—"}`} />
-          <Row label="Role" value={user?.role === "admin" ? "Administrator" : "Viewer"} />
+          <Row label="Role" value={roleLabel(user?.role)} />
         </div>
       </Card>
 

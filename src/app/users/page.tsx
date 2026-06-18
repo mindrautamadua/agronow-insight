@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { UserCog, Plus, X, Loader2, ShieldCheck, Eye } from "lucide-react";
 import { fmtDate } from "@/lib/utils";
 import { ListSkeleton, EmptyState } from "@/components/ui";
+import { ROLES, isAdminRole, roleLabel, type Role } from "@/lib/roles";
 
-interface AppUserRow { id: string; username: string; nama: string | null; role: "admin" | "viewer"; created_at: string }
+interface AppUserRow { id: string; username: string; nama: string | null; role: Role; created_at: string }
 
 export default function UsersPage() {
   const [loading, setLoading] = useState(true);
@@ -56,9 +57,9 @@ export default function UsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-md border font-medium ${u.role === "admin" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}>
-                      {u.role === "admin" ? <ShieldCheck className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      {u.role === "admin" ? "Administrator" : "Viewer"}
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-2 py-0.5 rounded-md border font-medium ${isAdminRole(u.role) ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-slate-500/10 text-slate-400 border-slate-500/20"}`}>
+                      {isAdminRole(u.role) ? <ShieldCheck className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {roleLabel(u.role)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-[var(--muted)]">{fmtDate(u.created_at)}</td>
@@ -75,7 +76,7 @@ export default function UsersPage() {
 }
 
 function UserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ username: "", nama: "", password: "", role: "viewer" });
+  const [form, setForm] = useState({ username: "", nama: "", password: "", role: "viewer_regional" as Role });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -107,8 +108,12 @@ function UserModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => v
           <label className="block"><span className="text-[11px] font-medium text-[var(--muted)] mb-1 block">Password *</span><input required type="password" value={form.password} onChange={e => set("password", e.target.value)} className={inputCls} autoComplete="new-password" /></label>
           <label className="block"><span className="text-[11px] font-medium text-[var(--muted)] mb-1 block">Role</span>
             <select value={form.role} onChange={e => set("role", e.target.value)} className={inputCls}>
-              <option value="viewer">Viewer (read-only)</option>
-              <option value="admin">Administrator</option>
+              <optgroup label="Admin (akses tulis)">
+                {ROLES.filter(isAdminRole).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+              </optgroup>
+              <optgroup label="Viewer (read-only)">
+                {ROLES.filter(r => !isAdminRole(r)).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+              </optgroup>
             </select>
           </label>
           <div className="flex justify-end gap-2 pt-2">

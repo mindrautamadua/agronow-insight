@@ -71,7 +71,7 @@ export default function PresensiPage() {
           <CountCard title="Sebaran Tingkat Kehadiran (kelas)" rows={data.rateBuckets} />
           <CountCard title="Kanal Presensi" rows={data.perChannel} icon={Smartphone} cap />
           <CountCard title="Mode Hadir · Online vs Offline"
-            note={`${fmtNum(data.presensiV2.sesi)} sesi · ${fmtNum(data.presensiV2.peserta)} peserta · 2025–2026`}
+            note={`${fmtNum(data.presensiV2.sesi)} program · ${fmtNum(data.presensiV2.peserta)} peserta · 2025–2026`}
             rows={data.presensiV2.modus} icon={Wifi} cap />
         </div>
 

@@ -1,4 +1,5 @@
 import { getSessionUser, listUsers, createUser } from "@/lib/authServer";
+import { isAdminRole, parseRole } from "@/lib/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const me = await getSessionUser();
   if (!me) return Response.json({ error: "Belum login." }, { status: 401 });
-  if (me.role !== "admin") return Response.json({ error: "Tidak berwenang." }, { status: 403 });
+  if (!isAdminRole(me.role)) return Response.json({ error: "Tidak berwenang." }, { status: 403 });
   const users = await listUsers();
   return Response.json({ users });
 }
@@ -16,7 +17,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const me = await getSessionUser();
   if (!me) return Response.json({ error: "Belum login." }, { status: 401 });
-  if (me.role !== "admin") return Response.json({ error: "Tidak berwenang." }, { status: 403 });
+  if (!isAdminRole(me.role)) return Response.json({ error: "Tidak berwenang." }, { status: 403 });
 
   let b: Record<string, unknown>;
   try {
@@ -29,11 +30,13 @@ export async function POST(request: Request) {
   if (!username || !password) {
     return Response.json({ error: "Username & password wajib diisi." }, { status: 400 });
   }
+  const role = parseRole(b.role);
+  if (!role) return Response.json({ error: "Role tidak valid." }, { status: 400 });
   const res = await createUser(
     username,
     password,
     b.nama == null ? "" : String(b.nama),
-    b.role === "viewer" ? "viewer" : "admin",
+    role,
   );
   if (!res.ok) return Response.json({ error: res.error ?? "Gagal membuat user." }, { status: 400 });
   return Response.json({ ok: true, id: res.id });

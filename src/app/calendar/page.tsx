@@ -165,7 +165,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7 gap-2">{Array.from({ length: 21 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}</div>
         </div>
       ) : rows.length === 0 ? (
-        <EmptyState icon={CalendarDays} title="Belum ada jadwal" desc="Jadwalkan sesi pelatihan untuk training di katalog." />
+        <EmptyState icon={CalendarDays} title="Belum ada jadwal" desc="Jadwalkan program pelatihan untuk training di katalog." />
       ) : view === "week" ? (
         <WeekView monday={monday} byDay={byDay} todayYmd={todayYmd} onOpen={setDetail} />
       ) : view === "month" ? (
@@ -188,7 +188,7 @@ function EventCard({ s, onOpen }: { s: TrainingSession; onOpen?: (s: TrainingSes
       title={s.judul || s.course_judul || undefined}>
       <span className={`absolute left-0 top-0 bottom-0 w-1 ${c.accent}`} />
       <span className={`absolute right-1.5 top-1.5 w-1.5 h-1.5 rounded-full ${STATUS_DOT[s.status] ?? "bg-slate-400"}`} title={s.status} />
-      <p className={`text-[11px] font-semibold leading-tight truncate pr-3 ${c.text}`}>{s.judul || s.course_judul || "Sesi"}</p>
+      <p className={`text-[11px] font-semibold leading-tight truncate pr-3 ${c.text}`}>{s.judul || s.course_judul || "Program"}</p>
       {sub && <p className="text-[10px] text-[var(--muted)] truncate mt-0.5">{sub}</p>}
       <p className="text-[10px] text-[var(--muted)] mt-0.5 flex items-center gap-1"><UsersIcon className="w-2.5 h-2.5 shrink-0" />{s.terdaftar ?? 0} peserta</p>
     </button>
@@ -370,7 +370,7 @@ function SessionModal({ s, onClose }: { s: TrainingSession; onClose: () => void 
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-bold text-[var(--foreground)] leading-snug">{s.judul || s.course_judul || "Sesi"}</h3>
+              <h3 className="text-sm font-bold text-[var(--foreground)] leading-snug">{s.judul || s.course_judul || "Program"}</h3>
               <StatusBadge status={s.status} />
             </div>
             <p className="text-[11px] text-[var(--muted)] mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">

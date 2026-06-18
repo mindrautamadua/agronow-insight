@@ -12,7 +12,7 @@ import { useTheme } from "@/components/ThemeContext";
 const FEATURES = [
   { icon: GraduationCap, title: "Katalog & Enrollment Training", desc: "Kelola program pelatihan dan daftarkan peserta dalam satu tempat." },
   { icon: Award, title: "Sertifikasi", desc: "Catat & pantau sertifikat pelatihan tiap peserta." },
-  { icon: CalendarDays, title: "Kalender Training", desc: "Jadwalkan sesi pelatihan dan lihat agenda mendatang." },
+  { icon: CalendarDays, title: "Kalender Training", desc: "Jadwalkan program pelatihan dan lihat agenda mendatang." },
 ];
 
 // ── Constellation "jaringan pembelajaran" (koordinat tetap → SSR-stable) ──

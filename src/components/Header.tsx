@@ -6,13 +6,14 @@ import { usePathname } from "next/navigation";
 import { User, ChevronDown, Sun, Moon, LogOut, Users } from "lucide-react";
 import { useTheme } from "./ThemeContext";
 import { useAuth } from "./AuthContext";
+import { isAdminRole, roleLabel as fmtRole } from "@/lib/roles";
 
 const PAGE_TITLES: Record<string, { title: string; desc: string }> = {
   "/":               { title: "Dashboard",        desc: "Ringkasan program Learning & Development" },
   "/eksternal":      { title: "Penggunaan Eksternal", desc: "Pemakaian Agronow oleh pihak di luar PTPN Group" },
   "/courses":        { title: "Katalog Training", desc: "Daftar program & kursus pelatihan" },
   "/enrollments":    { title: "Enrollment",       desc: "Pendaftaran peserta & progres pelatihan" },
-  "/calendar":       { title: "Kalender Training", desc: "Jadwal sesi pelatihan mendatang & terlaksana" },
+  "/calendar":       { title: "Kalender Training", desc: "Jadwal program pelatihan mendatang & terlaksana" },
   "/wallet":         { title: "Learning Wallet",  desc: "Pengajuan & anggaran pelatihan eksternal per entitas" },
   "/serapan":        { title: "Serapan Anggaran", desc: "Realisasi vs target anggaran & JPL Learning Wallet" },
   "/km":             { title: "Knowledge Management", desc: "Konten pembelajaran & portal pengetahuan — produksi & engagement" },
@@ -22,7 +23,10 @@ const PAGE_TITLES: Record<string, { title: string; desc: string }> = {
   "/wishlist":       { title: "Demand & Wishlist", desc: "Pelatihan paling diinginkan karyawan — sinyal perencanaan" },
   "/presensi":       { title: "Kehadiran / Presensi", desc: "Tingkat kehadiran peserta per kelas (hadir vs terdaftar)" },
   "/employees":      { title: "Peserta",          desc: "Karyawan PTPN Group yang mengikuti program L&D" },
+  "/cari-jpl":       { title: "Cari JPL Karyawan", desc: "Total jam pelajaran (JPL) per karyawan by NIK atau nama" },
+  "/idp-verifikasi": { title: "Verifikasi IDP",    desc: "Tinjau & setujui/tolak pengajuan IDP karyawan" },
   "/certifications": { title: "Sertifikasi",      desc: "Sertifikat peserta pelatihan" },
+  "/master-data":    { title: "Manajemen Master Data", desc: "Entitas, Regional & Unit Kerja korporat — sumber IHCMIS-DEV (read-only)" },
   "/schema":         { title: "Skema Database",   desc: "Hubungan antar tabel (ERD) — introspeksi langsung dari MySQL" },
   "/photos":         { title: "Sync Foto Karyawan", desc: "Tarik foto karyawan dari IHCMIS ke aplikasi (cocok via NIP)" },
   "/sync":           { title: "Sync Data",         desc: "Sinkronisasi harian MySQL → Supabase (tabel inti)" },
@@ -39,7 +43,7 @@ export function Header() {
   const userRef = useRef<HTMLDivElement>(null);
 
   const displayName = user?.nama || user?.username || "—";
-  const roleLabel = user?.role === "admin" ? "Administrator" : "Viewer";
+  const roleLabel = fmtRole(user?.role);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -90,7 +94,7 @@ export function Header() {
                 <p className="text-[10px] text-[var(--muted)] truncate">@{user?.username ?? "—"} · {roleLabel}</p>
               </div>
               <div className="p-1.5">
-                {user?.role === "admin" && (
+                {isAdminRole(user?.role) && (
                   <Link
                     href="/users"
                     onClick={() => setUserOpen(false)}

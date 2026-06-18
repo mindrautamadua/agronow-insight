@@ -5,7 +5,7 @@
  *
  * 1) Membuat database (jika belum ada) sesuai MYSQL_DATABASE
  * 2) Menjalankan db/schema.sql (drop + create tabel)
- * 3) Seed: user default (admin/admin123, viewer/viewer123) + data contoh L&D
+ * 3) Seed: user default (admin/admin123 = super_admin) + satu akun per jenis role + data contoh L&D
  *
  * Kredensial dibaca dari .env.local (lihat .env.example).
  */
@@ -47,14 +47,30 @@ async function main() {
   await conn.query(schema);
   console.log("✓ Schema dibuat (tabel)");
 
-  // 3) Seed — users
-  const adminHash = await bcrypt.hash("admin123", 10);
-  const viewerHash = await bcrypt.hash("viewer123", 10);
-  await conn.query(
-    "INSERT INTO app_users (username, nama, role, password_hash) VALUES (?,?,?,?),(?,?,?,?)",
-    ["admin", "Administrator L&D", "admin", adminHash, "viewer", "Viewer", "viewer", viewerHash],
+  // 3) Seed — users: super_admin default (admin/admin123) + satu akun per jenis role.
+  //    Password setiap akun = "<username>123" (mis. admin_holding / admin_holding123).
+  const seedUsers = [
+    ["admin", "Administrator L&D", "super_admin"],
+    ["admin_holding", "Admin Holding", "admin_holding"],
+    ["admin_anper", "Admin Anak Perusahaan", "admin_anper"],
+    ["admin_regional", "Admin Regional", "admin_regional"],
+    ["viewer_holding", "Viewer Holding", "viewer_holding"],
+    ["viewer_anper", "Viewer Anak Perusahaan", "viewer_anper"],
+    ["viewer_regional", "Viewer Regional", "viewer_regional"],
+  ];
+  const userRows = await Promise.all(
+    seedUsers.map(async ([username, nama, role]) => [
+      username,
+      nama,
+      role,
+      await bcrypt.hash(`${username}123`, 10),
+    ]),
   );
-  console.log("✓ Seed users (admin/admin123, viewer/viewer123)");
+  await conn.query(
+    "INSERT INTO app_users (username, nama, role, password_hash) VALUES ?",
+    [userRows],
+  );
+  console.log(`✓ Seed ${userRows.length} users (default: admin/admin123 = super_admin)`);
 
   // Employees
   const employees = [

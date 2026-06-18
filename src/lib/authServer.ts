@@ -9,11 +9,12 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { query, queryOne, execute } from "./db";
+import type { Role } from "./roles";
 
 export const SESSION_COOKIE = "agronow_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
 
-export type Role = "admin" | "viewer";
+export type { Role };
 export interface AuthUser { id: string; username: string; nama: string | null; role: Role }
 
 interface UserRow {
@@ -33,7 +34,7 @@ function toAuthUser(r: { id: number; username: string; nama: string | null; role
 const HARDCODED_USERNAME = "admin";
 const HARDCODED_PASSWORD = "admin123";
 const HARDCODED_TOKEN = "agronow-dev-hardcoded-admin-session";
-const HARDCODED_USER: AuthUser = { id: "0", username: "admin", nama: "Administrator L&D", role: "admin" };
+const HARDCODED_USER: AuthUser = { id: "0", username: "admin", nama: "Administrator L&D", role: "super_admin" };
 
 // ── Cookie helpers ──────────────────────────────────────────────────────────
 export async function getToken(): Promise<string | null> {

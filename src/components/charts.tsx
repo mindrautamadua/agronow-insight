@@ -17,7 +17,7 @@ const PALETTE = ["#10b981", "#3b82f6", "#8b5cf6", "#f59e0b", "#14b8a6", "#f43f5e
 const REST_COLOR = "#94a3b8";
 
 type Metric = "jpl" | "sesi" | "biaya" | "peserta";
-const METRIC_LABEL: Record<Metric, string> = { jpl: "JPL", sesi: "Sesi", biaya: "Biaya", peserta: "Peserta" };
+const METRIC_LABEL: Record<Metric, string> = { jpl: "JPL", sesi: "Program", biaya: "Biaya", peserta: "Peserta" };
 
 const fmtMetric = (m: Metric, v: number) => (m === "biaya" ? fmtRupiah(v) : fmtNum(v));
 // Sumbu Y angka ringkas (12 rb / 1,2 jt).
@@ -77,7 +77,7 @@ export function TrendAreaChart({ data, metric, onPick }: {
             const p = payload[0].payload as TrendPoint;
             return <TipBox title={BULAN[p.bln - 1]} lines={[
               { label: "JPL", value: fmtNum(p.jpl), color: "#10b981" },
-              { label: "Sesi", value: fmtNum(p.sesi), color: "#8b5cf6" },
+              { label: "Program", value: fmtNum(p.sesi), color: "#8b5cf6" },
               { label: "Peserta", value: fmtNum(p.peserta), color: "#3b82f6" },
               { label: "Biaya", value: fmtRupiah(p.biaya), color: "#f59e0b" },
             ]} />;

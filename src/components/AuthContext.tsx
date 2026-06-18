@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { isAdminRole, type Role } from "@/lib/roles";
 
-export type Role = "admin" | "viewer";
+export type { Role };
 export interface AuthUser { id: string; username: string; nama: string | null; role: Role }
 
 interface AuthContextValue {
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.replace("/login");
   }, [router]);
 
-  return <AuthContext.Provider value={{ user, isAdmin: user?.role === "admin", ready, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, isAdmin: isAdminRole(user?.role), ready, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

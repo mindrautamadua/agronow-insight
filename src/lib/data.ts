@@ -71,10 +71,12 @@ export interface CertificationPage { certifications: Certification[]; total: num
 // Dashboard L&D — realisasi pelatihan & JPL (sumber: `_rekap_classroom_excel`).
 export interface DashKpi {
   sesi: number; jpl: number; biaya: number; peserta: number;
-  avgJplSesi: number; biayaPerJpl: number;
 }
 export interface DashMonth { bln: number; jpl: number; sesi: number; biaya: number; peserta: number }
 export interface DashBar { label: string; jpl: number }
+// Subkelompok metode belajar (kerangka 70-20-10). `key`=metode_belajar70/20/10,
+// `ideal`=porsi ideal (70/20/10), `jpl`/`sesi`=realisasi.
+export interface DashSubkelompok { key: string; ideal: number; jpl: number; sesi: number }
 export interface DashboardData {
   entitas: { id: number; nama: string } | null;
   entitasList: { id: number; nama: string }[];
@@ -84,6 +86,7 @@ export interface DashboardData {
   monthly: DashMonth[];
   perLevel: DashBar[];
   perKategori: DashBar[];
+  perSubkelompok: DashSubkelompok[];
   perDivisi: DashBar[];
 }
 
@@ -94,6 +97,20 @@ export interface JplEmployee {
   jpl: number; sesi: number; photo?: string | null;
 }
 export interface CapaianData { target: number; employees: JplEmployee[] }
+
+// Pencarian JPL per karyawan by NIK/nama (sumber: `_rekap_classroom_excel`).
+export interface JplSearchTraining {
+  pelatihan: string; tglMulai: string | null; tglSelesai: string | null;
+  year: number | null; penyelenggara: string; kategori: string | null; jpl: number;
+}
+export interface JplSearchEmployee {
+  id: number; nama: string; nip: string | null;
+  jabatan: string | null; unit: string | null; level: string | null; entitas: string | null;
+  photo?: string | null; jpl: number; sesi: number;
+  perYear: { year: number; jpl: number; sesi: number }[];
+  trainings: JplSearchTraining[];
+}
+export interface JplSearchData { query: string; employees: JplSearchEmployee[] }
 
 // Rincian biaya (sumber: `_rekap_classroom_excel`).
 export interface BiayaBar { label: string; biaya: number }
@@ -108,13 +125,13 @@ export interface BiayaData {
 // Daftar Pelatihan (sumber: `_rekap_classroom_excel`).
 export interface DaftarTraining {
   id: string; pelatihan: string; tglMulai: string | null; tglSelesai: string | null;
-  penyelenggara: string; kategori: string | null;
+  penyelenggara: string; kategori: string | null; sub: string | null;
   jpl: number; peserta: number; biaya: number; flags: string[];
 }
 export interface DaftarPeserta {
   id: string; memberId: number; nama: string; nip: string | null; unit: string | null; level: string | null;
   pelatihan: string; tglMulai: string | null; tglSelesai: string | null;
-  penyelenggara: string; kategori: string | null; jpl: number; biaya: number;
+  penyelenggara: string; kategori: string | null; sub: string | null; jpl: number; biaya: number;
   sesi?: number; photo?: string | null;
 }
 export interface DaftarData {
@@ -236,17 +253,52 @@ export interface PresensiData {
   presensiV2: { rekam: number; peserta: number; sesi: number; modus: { label: string; n: number }[] };
 }
 
+// Individual Development Plan (IDP) — verifikasi pengajuan (sumber: `_idp`).
+// Input IDP dilakukan di aplikasi Agronow utama; di Insight hanya verifikasi.
+export interface IdpEntry {
+  id: number; tahun: number | null;
+  areaPengembangan: string | null; aspirasiPengembangan: string | null;
+  rencana: string | null; deskripsiPengembangan: string | null;
+  lokasi: string | null; tglPelaksanaan: string | null; jamMulai: string | null; jamSelesai: string | null;
+  urlDokumentasi: string | null; summary: string | null;
+  statusIdp: string; keteranganReject: string | null;
+  statusVerifikasi: string | null; catatanVerifikasi: string | null;
+  createdAt: string | null; updatedAt: string | null;
+}
+// Sisi verifikator — IDP yang diajukan + identitas pengaju.
+export interface IdpVerifEntry extends IdpEntry {
+  member: { id: number | null; nip: string | null; nama: string; jabatan: string | null; unit: string | null; entitas: string | null; level: string | null };
+  idVerifikator: number | null; tglVerifikasi: string | null;
+}
+export interface IdpVerifData { entries: IdpVerifEntry[]; pendingCount: number }
+
 // ── Fetchers ─────────────────────────────────────────────────────────────────
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`${url} → ${res.status}`);
   return res.json();
 }
+async function sendJSON<T>(url: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? `${url} → ${res.status}`);
+  return data as T;
+}
 
 export const fetchDashboard = (entitas?: number, year?: number) =>
   getJSON<DashboardData>(`/api/dashboard?entitas=${entitas ?? ""}&year=${year ?? ""}`);
 export const fetchCapaian = (entitas?: number, year?: number) =>
   getJSON<CapaianData>(`/api/dashboard/capaian?entitas=${entitas ?? ""}&year=${year ?? ""}`);
+export const fetchJplSearch = (q: string) =>
+  getJSON<JplSearchData>(`/api/jpl-search?q=${encodeURIComponent(q)}`);
+export const fetchIdpVerif = (status: "pending" | "all" = "pending") =>
+  getJSON<IdpVerifData>(`/api/idp/verifikasi?status=${status}`);
+export const verifyIdp = (id: number, action: "approve" | "reject", catatan?: string) =>
+  sendJSON<{ ok: true; id: number; statusIdp: string }>("/api/idp/verifikasi", "POST", { id, action, catatan });
 export const fetchBiaya = (entitas?: number, year?: number) =>
   getJSON<BiayaData>(`/api/dashboard/biaya?entitas=${entitas ?? ""}&year=${year ?? ""}`);
 export const fetchDaftar = (entitas?: number, year?: number) =>
@@ -282,6 +334,35 @@ export interface EksternalData {
   participants: EksParticipant[];
 }
 export const fetchEksternal = () => getJSON<EksternalData>("/api/eksternal");
+
+// Master Data korporat (read-only dari IHCMIS-DEV).
+export interface MasterEntitas {
+  id: string; kode: string | null; nama: string | null; singkatan: string | null;
+  type: string | null; aktif: boolean; urutan: number | null; logo_url: string | null;
+  regional_count: number; workunit_count: number;
+}
+export interface MasterRegional {
+  id: string; kode: string | null; nama: string | null; aktif: boolean;
+  urutan: number | null; entitas: string | null; entitas_id: string | null; workunit_count: number;
+}
+export interface MasterWorkunit {
+  id: string; kode: string | null; nama: string | null; plant: string | null;
+  profit_center: string | null; regional_text: string | null; sub_unit: string | null;
+  komoditas: string | null; aktif: boolean; entitas: string | null; regional_master: string | null;
+  entitas_id: string | null; regional_id: string | null;
+}
+export interface MasterDataResponse {
+  configured: boolean;
+  summary: {
+    entitas: { total: number; aktif: number };
+    regional: { total: number; aktif: number };
+    workunit: { total: number; aktif: number };
+  };
+  entitas: MasterEntitas[];
+  regional: MasterRegional[];
+  workunit: MasterWorkunit[];
+}
+export const fetchMasterData = () => getJSON<MasterDataResponse>("/api/master-data");
 
 export interface PhotoStatus { total: number; matched: number; lastSync: string | null; configured: boolean }
 export const fetchPhotoStatus = () => getJSON<PhotoStatus>("/api/photos");

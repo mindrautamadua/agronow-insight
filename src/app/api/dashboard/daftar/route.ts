@@ -59,17 +59,21 @@ function flagsFor(t: { jpl: number; biaya: number; tglMulai: string | null; tglS
 
 interface TrainRow extends RowDataPacket {
   pelatihan: string | null; tgl_mulai: string | null; tgl_selesai: string | null;
-  penyelenggara: string | null; kategori: string | null;
+  penyelenggara: string | null; kategori: string | null; sub: string | null;
   jpl: number | null; peserta: number; biaya: number | null;
 }
 interface PesertaRow extends RowDataPacket {
   member_id: number; nama: string | null; nip: string | null; unit: string | null; level: string | null;
   pelatihan: string | null; tgl_mulai: string | null; tgl_selesai: string | null;
-  penyelenggara: string | null; kategori: string | null; jpl: number | null; biaya: number | null;
+  penyelenggara: string | null; kategori: string | null; sub: string | null; jpl: number | null; biaya: number | null;
   photo: string | null;
 }
 
 const d = (v: string | null): string | null => (v ? String(v).slice(0, 10) : null);
+// Subkelompok metode belajar 70-20-10 (kolom `_learning_kategori.kategori`).
+// Hanya 3 nilai ini yang dipakai untuk drill-down; selain itu → null.
+const SUB_KEYS = new Set(["metode_belajar70", "metode_belajar20", "metode_belajar10"]);
+const subKey = (v: string | null): string | null => (v && SUB_KEYS.has(v) ? v : null);
 
 export async function GET(request: Request) {
   const g = await requireUser();
@@ -91,6 +95,7 @@ export async function GET(request: Request) {
               r.tgl_pelatihan_selesai::date AS tgl_selesai,
               MAX(r.penyelenggara) AS penyelenggara,
               MAX(kk.nama) AS kategori,
+              MAX(kk.kategori) AS sub,
               MAX(r.jpl) AS jpl,
               COUNT(DISTINCT r.member_id) AS peserta,
               SUM(r.biaya) AS biaya
@@ -108,6 +113,7 @@ export async function GET(request: Request) {
         tglSelesai: d(r.tgl_selesai),
         penyelenggara: normPenyelenggara(r.penyelenggara),
         kategori: clean(r.kategori),
+        sub: subKey(r.sub),
         jpl: Number(r.jpl ?? 0),
         peserta: Number(r.peserta ?? 0),
         biaya: Number(r.biaya ?? 0),
@@ -123,7 +129,7 @@ export async function GET(request: Request) {
               r.tgl_pelatihan_mulai::date AS tgl_mulai,
               r.tgl_pelatihan_selesai::date AS tgl_selesai,
               MAX(r.penyelenggara) AS penyelenggara,
-              MAX(kk.nama) AS kategori,
+              MAX(kk.nama) AS kategori, MAX(kk.kategori) AS sub,
               MAX(r.jpl) AS jpl, SUM(r.biaya) AS biaya, MAX(ep.photo_url) AS photo
          FROM _rekap_classroom_excel r
          LEFT JOIN _learning_kategori kk ON kk.id = r.kategori
@@ -144,6 +150,7 @@ export async function GET(request: Request) {
       tglSelesai: d(r.tgl_selesai),
       penyelenggara: normPenyelenggara(r.penyelenggara),
       kategori: clean(r.kategori),
+      sub: subKey(r.sub),
       jpl: Number(r.jpl ?? 0),
       biaya: Number(r.biaya ?? 0),
       photo: r.photo ?? null,

@@ -6,15 +6,16 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, GraduationCap, ClipboardList, Users, Award, CalendarDays,
-  Settings, ChevronRight, ChevronLeft, ChevronDown, Database, Wallet, Star, Briefcase, TrendingUp, Sparkles, UserCheck, Image as ImageIcon, ArrowRightLeft, Library, Coins, ExternalLink,
+  Settings, ChevronRight, ChevronLeft, ChevronDown, Database, Wallet, Star, Briefcase, TrendingUp, Sparkles, UserCheck, Image as ImageIcon, ArrowRightLeft, Library, Coins, ExternalLink, Clock, ClipboardCheck, Boxes,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "./SidebarContext";
 import { useAuth } from "./AuthContext";
+import { isAdminRole } from "@/lib/roles";
 
 // Halaman khusus Administrator — disembunyikan dari Viewer di sidebar & diblokir di level rute.
-export const ADMIN_ONLY_PATHS = ["/settings", "/users"];
+export const ADMIN_ONLY_PATHS = ["/settings", "/users", "/idp-verifikasi"];
 export function isAdminOnlyPath(path: string): boolean {
   return ADMIN_ONLY_PATHS.some(p => path === p || path.startsWith(p + "/"));
 }
@@ -50,7 +51,15 @@ const NAV_GROUPS: NavGroup[] = [
     label: "SDM",
     items: [
       { href: "/employees",      icon: Users, label: "Peserta" },
+      { href: "/cari-jpl",       icon: Clock, label: "Cari JPL Karyawan" },
+      { href: "/idp-verifikasi", icon: ClipboardCheck, label: "Verifikasi IDP" },
       { href: "/certifications", icon: Award, label: "Sertifikasi" },
+    ],
+  },
+  {
+    label: "Master Data",
+    items: [
+      { href: "/master-data", icon: Boxes, label: "Manajemen Master Data" },
     ],
   },
   {
@@ -74,7 +83,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const activeHref = (() => {
     let best = "";
     for (const g of NAV_GROUPS) {

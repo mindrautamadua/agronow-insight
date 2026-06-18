@@ -22,6 +22,15 @@ interface SesRow extends RowDataPacket { sesi: number; jpl: number | null }
 interface MonthAggRow extends RowDataPacket { bln: number; biaya: number | null; peserta: number }
 interface MonthSesRow extends RowDataPacket { bln: number; sesi: number; jpl: number | null }
 interface BarRow extends RowDataPacket { label: string | null; jpl: number | null }
+interface SubRow extends RowDataPacket { sub: string | null; jpl: number | null; sesi: number }
+
+// Subkelompok metode belajar (kerangka 70-20-10) — porsi ideal tiap kelompok.
+// `key` = nilai kolom `_learning_kategori.kategori` untuk metode belajar.
+const SUB_META: { key: string; ideal: number }[] = [
+  { key: "metode_belajar70", ideal: 70 },
+  { key: "metode_belajar20", ideal: 20 },
+  { key: "metode_belajar10", ideal: 10 },
+];
 
 function normLevel(v: string | null): string {
   const t = (v ?? "").trim();
@@ -57,8 +66,9 @@ export async function GET(request: Request) {
     if (!entitas) {
       return Response.json({
         entitas: null, entitasList: [], years, year,
-        kpi: { sesi: 0, jpl: 0, biaya: 0, peserta: 0, avgJplSesi: 0, biayaPerJpl: 0 },
-        monthly: emptyMonthly, perLevel: [], perKategori: [], perDivisi: [],
+        kpi: { sesi: 0, jpl: 0, biaya: 0, peserta: 0 },
+        monthly: emptyMonthly, perLevel: [], perKategori: [],
+        perSubkelompok: SUB_META.map(m => ({ ...m, jpl: 0, sesi: 0 })), perDivisi: [],
       });
     }
 
@@ -112,6 +122,27 @@ export async function GET(request: Request) {
        ) s GROUP BY label ORDER BY jpl DESC`, P);
     const perKategori = katRows.map(r => ({ label: r.label?.trim() || "Lainnya", jpl: Number(r.jpl ?? 0) }));
 
+    // Realisasi JPL per subkelompok 70-20-10 — JPL per-sesi (dedup via SESSION_KEY,
+    // konsisten dgn Total JPL & per Kategori) dikelompokkan via `_learning_kategori.kategori`
+    // (metode_belajar70/20/10). Selalu kembalikan 3 kelompok berurut 70→20→10, walau 0.
+    const subRows = await query<SubRow>(
+      `SELECT sub, COUNT(*) AS sesi, SUM(jpl) AS jpl FROM (
+         SELECT MAX(k.kategori) AS sub, MAX(r.jpl) AS jpl
+           FROM _rekap_classroom_excel r LEFT JOIN _learning_kategori k ON k.id = r.kategori
+          WHERE ${W} GROUP BY ${SESSION_KEY}
+       ) s WHERE sub IN ('metode_belajar70','metode_belajar20','metode_belajar10')
+       GROUP BY sub`, P);
+    const subMap = new Map<string, { jpl: number; sesi: number }>();
+    for (const r of subRows) {
+      const e = subMap.get(r.sub ?? "") ?? { jpl: 0, sesi: 0 };
+      e.jpl += Number(r.jpl ?? 0); e.sesi += Number(r.sesi ?? 0);
+      subMap.set(r.sub ?? "", e);
+    }
+    const perSubkelompok = SUB_META.map(m => ({
+      key: m.key, ideal: m.ideal,
+      jpl: subMap.get(m.key)?.jpl ?? 0, sesi: subMap.get(m.key)?.sesi ?? 0,
+    }));
+
     // JPL per Divisi — dimensi tambahan (penempatan member tahun ybs dari
     // `_member_bagian_divisi` → `_bagian_divisi`). Data baru terisi mulai 2026;
     // tahun lain bisa kosong. Person-JPL (mirip per Level).
@@ -128,12 +159,8 @@ export async function GET(request: Request) {
       entitas: { id: entitas.id, nama: entitas.nama },
       entitasList: entitasList.map(e => ({ id: e.id, nama: e.nama })),
       years, year,
-      kpi: {
-        sesi, jpl, biaya, peserta,
-        avgJplSesi: sesi ? Math.round((jpl / sesi) * 10) / 10 : 0,
-        biayaPerJpl: jpl ? Math.round(biaya / jpl) : 0,
-      },
-      monthly, perLevel, perKategori, perDivisi,
+      kpi: { sesi, jpl, biaya, peserta },
+      monthly, perLevel, perKategori, perSubkelompok, perDivisi,
     });
   } catch (err) {
     console.error("dashboard GET error", err);

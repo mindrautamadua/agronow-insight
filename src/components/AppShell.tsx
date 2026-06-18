@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { Sidebar, isAdminOnlyPath } from "./Sidebar";
 import { Header } from "./Header";
 import { cn } from "@/lib/utils";
+import { isAdminRole } from "@/lib/roles";
 
 function ShellInner({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar();
@@ -17,7 +18,7 @@ function ShellInner({ children }: { children: React.ReactNode }) {
   // Viewer tidak boleh mengakses halaman khusus admin via URL langsung — alihkan ke beranda.
   // Tunggu `ready`: sebelum sesi tervalidasi, user masih null sehingga admin pun akan
   // terdeteksi "bukan admin" dan salah ter-bounce dari halaman admin.
-  const blocked = ready && user?.role !== "admin" && isAdminOnlyPath(pathname);
+  const blocked = ready && !isAdminRole(user?.role) && isAdminOnlyPath(pathname);
   useEffect(() => { if (blocked) router.replace("/"); }, [blocked, router]);
   return (
     <div className="h-full flex overflow-hidden bg-[var(--background)]">
