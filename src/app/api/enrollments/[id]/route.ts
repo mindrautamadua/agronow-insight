@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -36,6 +37,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return Response.json({ error: "ID kelas tidak valid." }, { status: 400 });
   }
 
+  const sc = scopeWhere(g.user, "g.group_name");
   try {
     const rows = await query<MemberRow>(
       `SELECT cm.member_id AS id,
@@ -51,9 +53,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
          LEFT JOIN _group g ON g.group_id = m.group_id
          LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
          LEFT JOIN employee_photos ep ON ep.nip = m.member_nip
-        WHERE cm.cr_id = ?
+        WHERE cm.cr_id = ?${sc.sql ? ` AND ${sc.sql}` : ""}
         ORDER BY m.member_name ASC`,
-      [crId],
+      [crId, ...sc.params],
     );
 
     const members = rows.map((r) => {

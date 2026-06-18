@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -84,6 +85,8 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get("year"));
   const empty = { trainings: [], peserta: [], categories: [] };
   if (!entitas || !year) return Response.json(empty);
+  const allowedIds = await scopeGroupIds(g.user);
+  if (allowedIds && !allowedIds.includes(entitas)) return Response.json(empty);
 
   const W = "r.group_id = ? AND EXTRACT(YEAR FROM r.tgl_pelatihan_mulai)::int = ? AND r.status_data = 'publish'";
   const P = [entitas, year];

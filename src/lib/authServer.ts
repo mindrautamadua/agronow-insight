@@ -15,18 +15,19 @@ export const SESSION_COOKIE = "agronow_session";
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
 
 export type { Role };
-export interface AuthUser { id: string; username: string; nama: string | null; role: Role }
+export interface AuthUser { id: string; username: string; nama: string | null; role: Role; scope: string | null }
 
 interface UserRow {
   id: number;
   username: string;
   nama: string | null;
   role: Role;
+  scope: string | null;
   password_hash: string;
 }
 
-function toAuthUser(r: { id: number; username: string; nama: string | null; role: Role }): AuthUser {
-  return { id: String(r.id), username: r.username, nama: r.nama, role: r.role };
+function toAuthUser(r: { id: number; username: string; nama: string | null; role: Role; scope: string | null }): AuthUser {
+  return { id: String(r.id), username: r.username, nama: r.nama, role: r.role, scope: r.scope ?? null };
 }
 
 // ── Fallback hardcoded (sementara) ───────────────────────────────────────────
@@ -34,7 +35,7 @@ function toAuthUser(r: { id: number; username: string; nama: string | null; role
 const HARDCODED_USERNAME = "admin";
 const HARDCODED_PASSWORD = "admin123";
 const HARDCODED_TOKEN = "agronow-dev-hardcoded-admin-session";
-const HARDCODED_USER: AuthUser = { id: "0", username: "admin", nama: "Administrator L&D", role: "super_admin" };
+const HARDCODED_USER: AuthUser = { id: "0", username: "admin", nama: "Administrator L&D", role: "super_admin", scope: null };
 
 // ── Cookie helpers ──────────────────────────────────────────────────────────
 export async function getToken(): Promise<string | null> {
@@ -65,11 +66,12 @@ export async function login(username: string, password: string): Promise<{ token
   if (username === HARDCODED_USERNAME && password === HARDCODED_PASSWORD) {
     return { token: HARDCODED_TOKEN, user: HARDCODED_USER };
   }
-  const u = await queryOne<UserRow>(
-    "SELECT id, username, nama, role, password_hash FROM app_users WHERE username = ? LIMIT 1",
+  const u = await queryOne<UserRow & { is_active: boolean }>(
+    "SELECT id, username, nama, role, scope, password_hash, is_active FROM app_users WHERE username = ? LIMIT 1",
     [username],
   );
   if (!u) return null;
+  if (!u.is_active) return null; // user nonaktif: tolak login
   const ok = await bcrypt.compare(password, u.password_hash);
   if (!ok) return null;
 
@@ -87,11 +89,11 @@ export async function getSessionUser(): Promise<AuthUser | null> {
   if (!token) return null;
   // Fallback hardcoded — kenali sesi admin tanpa MySQL.
   if (token === HARDCODED_TOKEN) return HARDCODED_USER;
-  const r = await queryOne<{ id: number; username: string; nama: string | null; role: Role }>(
-    `SELECT u.id, u.username, u.nama, u.role
+  const r = await queryOne<{ id: number; username: string; nama: string | null; role: Role; scope: string | null }>(
+    `SELECT u.id, u.username, u.nama, u.role, u.scope
        FROM app_sessions s
        JOIN app_users u ON u.id = s.user_id
-      WHERE s.token = ? AND s.expires_at > NOW()
+      WHERE s.token = ? AND s.expires_at > NOW() AND u.is_active = TRUE
       LIMIT 1`,
     [token],
   );
@@ -104,20 +106,56 @@ export async function logout(token: string) {
 }
 
 // ── User management (admin) ──────────────────────────────────────────────────
-export async function listUsers(): Promise<(AuthUser & { created_at: string })[]> {
-  const rows = await query<{ id: number; username: string; nama: string | null; role: Role; created_at: string }>(
-    "SELECT id, username, nama, role, created_at FROM app_users ORDER BY created_at ASC",
+export async function listUsers(): Promise<(AuthUser & { created_at: string; is_active: boolean })[]> {
+  const rows = await query<{ id: number; username: string; nama: string | null; role: Role; scope: string | null; created_at: string; is_active: boolean }>(
+    "SELECT id, username, nama, role, scope, created_at, is_active FROM app_users ORDER BY created_at ASC",
   );
-  return rows.map(r => ({ ...toAuthUser(r), created_at: r.created_at }));
+  return rows.map(r => ({ ...toAuthUser(r), created_at: r.created_at, is_active: !!r.is_active }));
 }
 
-export async function createUser(username: string, password: string, nama: string, role: Role): Promise<{ ok: boolean; error?: string; id?: string }> {
+/** Aktif/nonaktifkan user. User nonaktif tak bisa login & sesinya ditolak. */
+export async function setUserActive(id: string, active: boolean): Promise<{ ok: boolean; error?: string }> {
+  const existing = await queryOne<{ id: number }>("SELECT id FROM app_users WHERE id = ? LIMIT 1", [id]);
+  if (!existing) return { ok: false, error: "User tidak ditemukan." };
+  await execute("UPDATE app_users SET is_active = ? WHERE id = ?", [active, id]);
+  // Cabut sesi aktif saat dinonaktifkan agar langsung logout.
+  if (!active) await execute("DELETE FROM app_sessions WHERE user_id = ?", [id]);
+  return { ok: true };
+}
+
+export async function createUser(username: string, password: string, nama: string, role: Role, scope: string | null = null): Promise<{ ok: boolean; error?: string; id?: string }> {
   const existing = await queryOne<{ id: number }>("SELECT id FROM app_users WHERE username = ? LIMIT 1", [username]);
   if (existing) return { ok: false, error: "Username sudah dipakai." };
   const hash = await bcrypt.hash(password, 10);
   const res = await execute(
-    "INSERT INTO app_users (username, nama, role, password_hash) VALUES (?, ?, ?, ?) RETURNING id",
-    [username, nama || null, role, hash],
+    "INSERT INTO app_users (username, nama, role, scope, password_hash) VALUES (?, ?, ?, ?, ?) RETURNING id",
+    [username, nama || null, role, scope || null, hash],
   );
   return { ok: true, id: String(res.insertId) };
+}
+
+/**
+ * Perbarui data user (admin). Username tidak diubah. Password opsional:
+ * bila `password` kosong/undefined, hash lama dipertahankan.
+ */
+export async function updateUser(
+  id: string,
+  fields: { nama?: string | null; role: Role; scope: string | null; password?: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const existing = await queryOne<{ id: number }>("SELECT id FROM app_users WHERE id = ? LIMIT 1", [id]);
+  if (!existing) return { ok: false, error: "User tidak ditemukan." };
+
+  if (fields.password) {
+    const hash = await bcrypt.hash(fields.password, 10);
+    await execute(
+      "UPDATE app_users SET nama = ?, role = ?, scope = ?, password_hash = ? WHERE id = ?",
+      [fields.nama || null, fields.role, fields.scope || null, hash, id],
+    );
+  } else {
+    await execute(
+      "UPDATE app_users SET nama = ?, role = ?, scope = ? WHERE id = ?",
+      [fields.nama || null, fields.role, fields.scope || null, id],
+    );
+  }
+  return { ok: true };
 }

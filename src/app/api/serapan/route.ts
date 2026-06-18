@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -44,7 +45,11 @@ export async function GET(request: Request) {
       `SELECT DISTINCT tahun AS y FROM _learning_wallet_serapan WHERE tahun > 2000 ORDER BY y DESC`)).map(r => Number(r.y)).filter(Boolean);
     if (years.length === 0) return Response.json(empty);
     const year = years.includes(reqYear) ? reqYear : years[0];
-    const P = [year];
+    // Pembatas cakupan via kolom denormal `nama_group` (alias `s` di query member).
+    const sc = scopeWhere(g.user, "nama_group");
+    const scS = scopeWhere(g.user, "s.nama_group");
+    const scAnd = sc.sql ? ` AND ${sc.sql}` : "";
+    const P = [year, ...sc.params];
 
     const k = await queryOne<RowDataPacket & { peserta: number; target: number; realisasi: number; jpl_target: number; jpl_realisasi: number }>(
       `SELECT COUNT(*) AS peserta,
@@ -52,14 +57,14 @@ export async function GET(request: Request) {
               COALESCE(SUM(nominal_realisasi), 0) AS realisasi,
               COALESCE(SUM(jpl_target), 0) AS jpl_target,
               COALESCE(SUM(jpl_realisasi), 0) AS jpl_realisasi
-         FROM _learning_wallet_serapan WHERE tahun = ?`, P);
+         FROM _learning_wallet_serapan WHERE tahun = ?${scAnd}`, P);
 
     const perEntitas = bars(await query<BarRow>(
       `SELECT nama_group AS label, COALESCE(SUM(nominal_target), 0) AS target, COALESCE(SUM(nominal_realisasi), 0) AS realisasi
-         FROM _learning_wallet_serapan WHERE tahun = ? GROUP BY nama_group ORDER BY target DESC NULLS LAST LIMIT 12`, P));
+         FROM _learning_wallet_serapan WHERE tahun = ?${scAnd} GROUP BY nama_group ORDER BY target DESC NULLS LAST LIMIT 12`, P));
     const perLevel = bars(await query<BarRow>(
       `SELECT nama_level_karyawan AS label, COALESCE(SUM(nominal_target), 0) AS target, COALESCE(SUM(nominal_realisasi), 0) AS realisasi
-         FROM _learning_wallet_serapan WHERE tahun = ? GROUP BY nama_level_karyawan ORDER BY target DESC NULLS LAST LIMIT 12`, P));
+         FROM _learning_wallet_serapan WHERE tahun = ?${scAnd} GROUP BY nama_level_karyawan ORDER BY target DESC NULLS LAST LIMIT 12`, P));
 
     const members = (await query<MemberRow>(
       `SELECT s.id_member AS id, m.member_name AS nama, ep.photo_url AS photo,
@@ -68,9 +73,9 @@ export async function GET(request: Request) {
          FROM _learning_wallet_serapan s
          LEFT JOIN _member m ON m.member_id = s.id_member
          LEFT JOIN employee_photos ep ON ep.nip = m.member_nip
-        WHERE s.tahun = ?
+        WHERE s.tahun = ?${scS.sql ? ` AND ${scS.sql}` : ""}
         ORDER BY s.nominal_realisasi DESC NULLS LAST, s.nominal_target DESC NULLS LAST
-        LIMIT 600`, P)).map(r => {
+        LIMIT 600`, [year, ...scS.params])).map(r => {
       const target = Number(r.target ?? 0), realisasi = Number(r.realisasi ?? 0);
       return {
         id: Number(r.id), nama: clean(r.nama) ?? `Member #${r.id}`, photo: r.photo ?? null,

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -50,6 +51,9 @@ export async function GET(request: Request) {
   // Sub-entitas (group_name penuh) lebih spesifik daripada entitas (prefix).
   if (sub) { where.push("g.group_name = ?"); params.push(sub); }
   else if (entitas) { where.push("(g.group_name = ? OR g.group_name ILIKE ?)"); params.push(entitas, `${entitas} - %`); }
+  // Pembatas cakupan per-user (anper/regional) — selalu di-AND-kan.
+  const sc = scopeWhere(g.user, "g.group_name");
+  if (sc.sql) { where.push(sc.sql); params.push(...sc.params); }
   if (q) {
     where.push("(m.member_name ILIKE ? OR m.member_nip ILIKE ? OR m.member_email ILIKE ?)");
     const like = `%${q}%`;

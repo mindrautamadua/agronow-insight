@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -56,6 +57,9 @@ export async function GET(request: Request) {
     const where = ["w.status = 'aktif'"];
     const P: unknown[] = [];
     if (year) { where.push(`${S.yearExpr} = ?`); P.push(year); }
+    // Pembatas cakupan: batasi ke member yang group-nya termasuk scope user.
+    const allowedIds = await scopeGroupIds(g.user);
+    if (allowedIds) { where.push("w.id_member IN (SELECT m.member_id FROM _member m WHERE m.group_id = ANY(?))"); P.push(allowedIds); }
     const W = where.join(" AND ");
 
     const kpi = await queryOne<RowDataPacket & { total: number; pelatihan: number; peminat: number; prioritas: number }>(

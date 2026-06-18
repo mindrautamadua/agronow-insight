@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { isScoped } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -27,6 +28,15 @@ interface PartRow extends RowDataPacket { crId: number; entitas: string; nama: s
 export async function GET() {
   const g = await requireUser();
   if ("response" in g) return g.response;
+
+  // Modul lintas-grup (penggunaan non-PTPN) — tak relevan bagi user bercakupan
+  // anper/regional; kembalikan kosong agar tak membocorkan data luar cakupan.
+  if (isScoped(g.user)) {
+    return Response.json({
+      summary: [], kpi: { terdaftar: 0, aktif: 0, dorman: 0, peserta: 0 },
+      entitas: [], trainings: [], participants: [],
+    });
+  }
 
   try {
     const segRows = await query<SegRow>(

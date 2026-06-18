@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -41,12 +42,13 @@ export async function GET(request: Request) {
   if ("response" in g) return g.response;
 
   try {
-    const entitasList = await query<RowDataPacket & { id: number; nama: string }>(
+    const allowedIds = await scopeGroupIds(g.user); // null = tanpa batas
+    const entitasList = (await query<RowDataPacket & { id: number; nama: string }>(
       `SELECT p.id_group AS id, gr.group_name AS nama, COUNT(*) AS n
          FROM _learning_wallet_pengajuan p LEFT JOIN _group gr ON gr.group_id = p.id_group
         WHERE p.status = 'aktif' AND NULLIF(TRIM(gr.group_name), '') IS NOT NULL
         GROUP BY p.id_group, gr.group_name ORDER BY n DESC`,
-    );
+    )).filter(e => !allowedIds || allowedIds.includes(Number(e.id)));
     const years = (await query<RowDataPacket & { y: number }>(
       `SELECT DISTINCT tahun AS y FROM _learning_wallet_pengajuan WHERE status='aktif' AND tahun > 2000 ORDER BY y DESC`,
     )).map(r => Number(r.y));
@@ -60,6 +62,7 @@ export async function GET(request: Request) {
     const where = ["p.status = 'aktif'"];
     const P: unknown[] = [];
     if (entitas) { where.push("p.id_group = ?"); P.push(entitas); }
+    else if (allowedIds) { where.push("p.id_group = ANY(?)"); P.push(allowedIds); }
     if (year) { where.push("p.tahun = ?"); P.push(year); }
     const W = where.join(" AND ");
 

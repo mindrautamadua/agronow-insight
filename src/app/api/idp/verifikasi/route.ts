@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { query, queryOne, execute } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -71,6 +72,11 @@ export async function GET(request: Request) {
   const onlyPending = status !== "all";
 
   try {
+    const sc = scopeWhere(g.user, "g.group_name");
+    const conds: string[] = [];
+    if (onlyPending) conds.push("LOWER(COALESCE(i.status_idp, '')) IN ('submitted','pending')");
+    if (sc.sql) conds.push(sc.sql);
+    const whereSql = conds.length ? `WHERE ${conds.join(" AND ")}` : "";
     const rows = await query<VerifRow>(
       `SELECT i.*,
               m.member_name AS nama, m.member_nip AS nip, m.member_jabatan AS jabatan,
@@ -79,9 +85,10 @@ export async function GET(request: Request) {
          LEFT JOIN _member m ON m.member_id::text = i.member_id
          LEFT JOIN _group g ON g.group_id = m.group_id
          LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
-        ${onlyPending ? `WHERE LOWER(COALESCE(i.status_idp, '')) IN ('submitted','pending')` : ``}
+        ${whereSql}
         ORDER BY (LOWER(COALESCE(i.status_idp, '')) IN ('submitted','pending')) DESC,
                  i.updated_at DESC NULLS LAST, i.id DESC`,
+      sc.params,
     );
     const pendingCount = rows.filter(r => PENDING.includes((r.status_idp ?? "").toLowerCase())).length;
     return Response.json({ entries: rows.map(toEntry), pendingCount });

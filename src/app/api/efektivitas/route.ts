@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -30,15 +31,18 @@ export async function GET(request: Request) {
   const reqEntitas = Number(url.searchParams.get("entitas")) || 0;
 
   try {
-    const entitasList = await query<RowDataPacket & { id: number; nama: string }>(
+    const allowedIds = await scopeGroupIds(g.user); // null = tanpa batas
+    const entitasList = (await query<RowDataPacket & { id: number; nama: string }>(
       `SELECT r.group_id AS id, gr.group_name AS nama, COUNT(*) AS n
          FROM _classroom_evaluasi_lv3_rekap r LEFT JOIN _group gr ON gr.group_id = r.group_id
         WHERE NULLIF(TRIM(gr.group_name), '') IS NOT NULL
-        GROUP BY r.group_id, gr.group_name ORDER BY n DESC`);
+        GROUP BY r.group_id, gr.group_name ORDER BY n DESC`))
+      .filter(e => !allowedIds || allowedIds.includes(Number(e.id)));
     const entitas = entitasList.some(e => e.id === reqEntitas) ? reqEntitas : 0;
 
-    const where = entitas ? "WHERE r.group_id = ?" : "";
-    const P = entitas ? [entitas] : [];
+    // Entitas spesifik → filter persis; selain itu, batasi ke cakupan user (bila ada).
+    const where = entitas ? "WHERE r.group_id = ?" : (allowedIds ? "WHERE r.group_id = ANY(?)" : "");
+    const P: unknown[] = entitas ? [entitas] : (allowedIds ? [allowedIds] : []);
 
     const kpi = await queryOne<RowDataPacket & {
       pelatihan: number; peserta: number; pre: number | null; post: number | null; gain: number | null; naik: number;
@@ -67,8 +71,8 @@ export async function GET(request: Request) {
     // Tindak lanjut L3 — penilaian perubahan perilaku oleh ATASAN langsung
     // (`_classroom_evaluasi_lv3_pairing`, status_penilai='atasan', progress 0–100).
     // Difilter entitas via group_id peserta yang dinilai (id_dinilai → _member).
-    const aWhere = entitas ? "AND md.group_id = ?" : "";
-    const aP = entitas ? [entitas] : [];
+    const aWhere = entitas ? "AND md.group_id = ?" : (allowedIds ? "AND md.group_id = ANY(?)" : "");
+    const aP: unknown[] = entitas ? [entitas] : (allowedIds ? [allowedIds] : []);
     const atasan = await queryOne<RowDataPacket & { penilaian: number; kelas: number; dinilai: number; tuntas: number; avg_progress: number | null }>(
       `SELECT COUNT(*) AS penilaian, COUNT(DISTINCT p.cr_id) AS kelas, COUNT(DISTINCT p.id_dinilai) AS dinilai,
               SUM(CASE WHEN p.progress >= 100 THEN 1 ELSE 0 END) AS tuntas,

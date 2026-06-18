@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -39,6 +40,14 @@ export async function GET(request: Request) {
   const status = (url.searchParams.get("status") ?? "").trim(); // ''=semua | open | progress | draft | final
 
   try {
+    // Pembatas cakupan: batasi PA ke member yang group-nya termasuk scope user.
+    const allowedIds = await scopeGroupIds(g.user);
+    const A = allowedIds ? [allowedIds] : [];
+    const memSub = "member_id IN (SELECT member_id FROM _member WHERE group_id = ANY(?))";
+    const paScope = allowedIds ? memSub : "";
+    const paScopePa = allowedIds ? `pa.${memSub}` : "";
+    const detScope = allowedIds ? `pa_id IN (SELECT pa_id FROM _project_assignment WHERE ${memSub})` : "";
+
     const kpi = await queryOne<RowDataPacket & {
       total: number; peserta: number; pelatihan: number; avg: number | null; berjalan: number; selesai: number;
     }>(
@@ -46,23 +55,24 @@ export async function GET(request: Request) {
               ROUND(AVG(pa_progress)::numeric, 1) AS avg,
               SUM(CASE WHEN pa_status = 'progress' THEN 1 ELSE 0 END) AS berjalan,
               SUM(CASE WHEN pa_status = 'final' OR pa_progress >= 100 THEN 1 ELSE 0 END) AS selesai
-         FROM _project_assignment`);
+         FROM _project_assignment${paScope ? ` WHERE ${paScope}` : ""}`, A);
 
     const byStatus = await query<BarRow>(
-      `SELECT pa_status AS label, COUNT(*) AS n FROM _project_assignment GROUP BY pa_status ORDER BY n DESC`);
+      `SELECT pa_status AS label, COUNT(*) AS n FROM _project_assignment${paScope ? ` WHERE ${paScope}` : ""} GROUP BY pa_status ORDER BY n DESC`, A);
 
     const byProgress = await query<BarRow>(
       `SELECT CASE WHEN pa_progress >= 100 THEN 'Selesai' WHEN pa_progress >= 51 THEN '51–99%'
                    WHEN pa_progress >= 1 THEN '1–50%' ELSE 'Belum mulai' END AS label, COUNT(*) AS n
-         FROM _project_assignment GROUP BY 1`);
+         FROM _project_assignment${paScope ? ` WHERE ${paScope}` : ""} GROUP BY 1`, A);
 
     const perPelatihan = await query<BarRow>(
       `SELECT cr.cr_name AS label, COUNT(*) AS n
          FROM _project_assignment pa JOIN _classroom cr ON cr.cr_id = pa.cr_id
-        GROUP BY cr.cr_id, cr.cr_name ORDER BY n DESC LIMIT 12`);
+        ${paScopePa ? `WHERE ${paScopePa}` : ""} GROUP BY cr.cr_id, cr.cr_name ORDER BY n DESC LIMIT 12`, A);
 
-    const where = status ? "WHERE pa.pa_status = ?" : "";
-    const P = status ? [status] : [];
+    const listConds = [status ? "pa.pa_status = ?" : "", paScopePa].filter(Boolean);
+    const where = listConds.length ? `WHERE ${listConds.join(" AND ")}` : "";
+    const P = [...(status ? [status] : []), ...A];
     const rows = await query<PaRow>(
       `SELECT pa.pa_id AS id, m.member_name AS nama, m.member_nip AS nip,
               COALESCE(NULLIF(TRIM(pa.pa_jabatan), ''), m.member_jabatan) AS jabatan,
@@ -82,12 +92,12 @@ export async function GET(request: Request) {
     const det = await queryOne<RowDataPacket & { total: number; tuntas: number; avg: number | null; pa: number }>(
       `SELECT COUNT(*) AS total, SUM(CASE WHEN pad_progress >= 100 THEN 1 ELSE 0 END) AS tuntas,
               ROUND(AVG(LEAST(100, GREATEST(0, pad_progress)))::numeric, 1) AS avg, COUNT(DISTINCT pa_id) AS pa
-         FROM _project_assignment_detail`);
+         FROM _project_assignment_detail${detScope ? ` WHERE ${detScope}` : ""}`, A);
     const outcomeRows = await query<RowDataPacket & { program: string | null; deliverable: string | null; outcome: string | null; progress: number | null }>(
       `SELECT pad_program AS program, pad_deliverable AS deliverable, pad_outcome AS outcome, pad_progress AS progress
          FROM _project_assignment_detail
-        WHERE NULLIF(TRIM(pad_outcome), '') IS NOT NULL
-        ORDER BY pad_date_change DESC NULLS LAST, pad_id DESC LIMIT 15`);
+        WHERE NULLIF(TRIM(pad_outcome), '') IS NOT NULL${detScope ? ` AND ${detScope}` : ""}
+        ORDER BY pad_date_change DESC NULLS LAST, pad_id DESC LIMIT 15`, A);
     const detTotal = Number(det?.total ?? 0);
 
     const bars = (rs: BarRow[], labelFn: (s: string | null) => string) =>

@@ -22,11 +22,22 @@ export interface EmployeeSummary { total: number; aktif: number; nonaktif: numbe
 
 // Katalog Training — definisi program (sumber: tabel legacy `_learning_katalog`).
 export interface Course {
-  id: number; kode: string; judul: string; kategori: string | null; deskripsi: string | null;
+  id: number; kode: string; judul: string; tahun: number | null;
+  kategori: string | null; deskripsi: string | null;
   mode: string | null;                 // metode penyelenggaraan (offline/online/hybrid/blended)
   durasi_jam: number | null;           // jpl_total
   durasi_hari: number | null;          // durasi_hari
   biaya: number; status: "aktif" | "arsip";
+  // Detail katalog (panel saat baris diklik)
+  silabus: string | null;
+  sasaran: string | null;
+  penugasan_pasca: string | null;
+  kata_kunci: string | null;
+  minimal_peserta: number | null;
+  level_peserta: string | null;
+  catatan_peserta: string | null;
+  pic: string | null;
+  rekomendasi_grup: string | null;
 }
 
 export interface TrainingSession {

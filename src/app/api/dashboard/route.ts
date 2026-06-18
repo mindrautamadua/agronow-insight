@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -43,13 +44,14 @@ export async function GET(request: Request) {
   if ("response" in g) return g.response;
 
   try {
-    const entitasList = await query<RowDataPacket & { id: number; nama: string }>(
+    const allowedIds = await scopeGroupIds(g.user); // null = tanpa batas
+    const entitasList = (await query<RowDataPacket & { id: number; nama: string }>(
       `SELECT DISTINCT r.group_id AS id, g.group_name AS nama
          FROM _rekap_classroom_excel r
          LEFT JOIN _group g ON g.group_id = r.group_id
         WHERE r.status_data = 'publish'
         ORDER BY nama`,
-    );
+    )).filter(e => !allowedIds || allowedIds.includes(Number(e.id)));
     const years = (await query<RowDataPacket & { y: number }>(
       `SELECT DISTINCT EXTRACT(YEAR FROM tgl_pelatihan_mulai)::int AS y
          FROM _rekap_classroom_excel WHERE status_data = 'publish' AND tgl_pelatihan_mulai IS NOT NULL

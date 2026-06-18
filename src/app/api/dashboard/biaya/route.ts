@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -54,6 +55,9 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get("year"));
   const empty = { kpi: { totalBiaya: 0, biayaPerJpl: 0, biayaPerPeserta: 0, sesiBerbiaya: 0, sesiTanpaBiaya: 0 }, perUnit: [], perPenyelenggara: [], perLevel: [], perKategori: [] };
   if (!entitas || !year) return Response.json(empty);
+  // Tolak entitas di luar cakupan user.
+  const allowedIds = await scopeGroupIds(g.user);
+  if (allowedIds && !allowedIds.includes(entitas)) return Response.json(empty);
 
   const W = "r.group_id = ? AND EXTRACT(YEAR FROM r.tgl_pelatihan_mulai)::int = ? AND r.status_data = 'publish'";
   const P = [entitas, year];

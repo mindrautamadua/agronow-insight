@@ -52,3 +52,28 @@ export function isAdminRole(role: Role | string | null | undefined): boolean {
 export function parseRole(value: unknown): Role | null {
   return typeof value === "string" && (ROLES as string[]).includes(value) ? (value as Role) : null;
 }
+
+/**
+ * Tingkat cakupan organisasi sebuah peran:
+ *  - "global"   → super_admin (lihat semua)
+ *  - "holding"  → admin_holding / viewer_holding (lihat semua, level holding)
+ *  - "anper"    → admin_anper / viewer_anper (dibatasi 1 anak perusahaan)
+ *  - "regional" → admin_regional / viewer_regional (dibatasi 1 regional)
+ */
+export function scopeLevel(role: Role | string | null | undefined): "global" | "holding" | "anper" | "regional" {
+  if (role === "super_admin") return "global";
+  if (typeof role === "string" && role.endsWith("_anper")) return "anper";
+  if (typeof role === "string" && role.endsWith("_regional")) return "regional";
+  return "holding";
+}
+
+/** True bila peran perlu nilai `scope` (anper/regional), bukan holding/global. */
+export function needsScope(role: Role | string | null | undefined): boolean {
+  const lvl = scopeLevel(role);
+  return lvl === "anper" || lvl === "regional";
+}
+
+/** Label tampilan untuk tingkat cakupan sebuah peran. */
+export function scopeLevelLabel(role: Role | string | null | undefined): string {
+  return { global: "Semua", holding: "Holding", anper: "Anak Perusahaan", regional: "Regional" }[scopeLevel(role)];
+}

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -17,13 +18,15 @@ const SEP = " - ";
 export async function GET() {
   const g = await requireUser();
   if ("response" in g) return g.response;
+  const sc = scopeWhere(g.user, "g.group_name");
   try {
     const rows = await query<Row>(
       `SELECT g.group_name AS grp, COUNT(*) AS total
          FROM _member m
          JOIN _group g ON g.group_id = m.group_id
-        WHERE TRIM(m.member_name) <> '' AND NULLIF(TRIM(g.group_name), '') IS NOT NULL
+        WHERE TRIM(m.member_name) <> '' AND NULLIF(TRIM(g.group_name), '') IS NOT NULL${sc.sql ? ` AND ${sc.sql}` : ""}
         GROUP BY g.group_name`,
+      sc.params,
     );
 
     // Bangun pohon entitas → sub-entitas.

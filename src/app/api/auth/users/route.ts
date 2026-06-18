@@ -1,5 +1,5 @@
 import { getSessionUser, listUsers, createUser } from "@/lib/authServer";
-import { isAdminRole, parseRole } from "@/lib/roles";
+import { isAdminRole, parseRole, needsScope } from "@/lib/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,11 +32,17 @@ export async function POST(request: Request) {
   }
   const role = parseRole(b.role);
   if (!role) return Response.json({ error: "Role tidak valid." }, { status: 400 });
+  // Scope wajib untuk peran anper/regional, diabaikan (NULL) untuk holding/global.
+  const scope = needsScope(role) ? String(b.scope ?? "").trim() : "";
+  if (needsScope(role) && !scope) {
+    return Response.json({ error: "Cakupan (scope) wajib diisi untuk peran ini." }, { status: 400 });
+  }
   const res = await createUser(
     username,
     password,
     b.nama == null ? "" : String(b.nama),
     role,
+    scope || null,
   );
   if (!res.ok) return Response.json({ error: res.error ?? "Gagal membuat user." }, { status: 400 });
   return Response.json({ ok: true, id: res.id });

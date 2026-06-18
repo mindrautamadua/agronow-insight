@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeWhere } from "@/lib/scope";
 import { queryOne } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
     const like = `%${q}%`;
     params.push(like, like, like);
   }
+  const sc = scopeWhere(g.user, "g.group_name");
+  if (sc.sql) { where.push(sc.sql); params.push(...sc.params); }
 
   try {
     const row = await queryOne<SummaryRow>(

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -35,6 +36,10 @@ export async function GET(request: Request) {
   const entitas = Number(url.searchParams.get("entitas"));
   const year = Number(url.searchParams.get("year"));
   if (!entitas || !year) {
+    return Response.json({ target: TARGET, employees: [] });
+  }
+  const allowedIds = await scopeGroupIds(g.user);
+  if (allowedIds && !allowedIds.includes(entitas)) {
     return Response.json({ target: TARGET, employees: [] });
   }
 

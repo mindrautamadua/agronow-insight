@@ -20,7 +20,12 @@ CREATE TABLE app_users (
   username      VARCHAR(64)  NOT NULL,
   nama          VARCHAR(128) NULL,
   role          ENUM('super_admin','admin_holding','admin_anper','admin_regional','viewer_holding','viewer_anper','viewer_regional') NOT NULL DEFAULT 'viewer_regional',
+  -- Cakupan organisasi peran: NULL = holding/semua; untuk *_anper = nama anak
+  -- perusahaan (cocok prefix _group.group_name); untuk *_regional = nama regional.
+  scope         VARCHAR(255) NULL,
   password_hash VARCHAR(255) NOT NULL,
+  -- User aktif? Nonaktif = tak bisa login & sesi lama ditolak. 1 = aktif.
+  is_active     TINYINT(1) NOT NULL DEFAULT 1,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_username (username)

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/apiAuth";
+import { scopeGroupIds } from "@/lib/scope";
 import { query } from "@/lib/db";
 import type { RowDataPacket } from "mysql2";
 
@@ -53,6 +54,8 @@ export async function GET(request: Request) {
   const like = `%${q}%`;
 
   try {
+    const allowedIds = await scopeGroupIds(g.user); // null = tanpa batas
+    const scopeSql = allowedIds ? " AND r.group_id = ANY(?)" : "";
     // Karyawan yang cocok (NIK/nama) + total JPL deduped per sesi, lintas tahun & entitas.
     const empRows = await query<EmpRow>(
       `SELECT t.member_id AS id,
@@ -69,7 +72,7 @@ export async function GET(request: Request) {
              FROM _rekap_classroom_excel r
              LEFT JOIN _group grp ON grp.group_id = r.group_id
              LEFT JOIN employee_photos ep ON ep.nip = r.member_nip
-            WHERE r.status_data = 'publish'
+            WHERE r.status_data = 'publish'${scopeSql}
               AND r.member_id IN (
                 SELECT DISTINCT member_id FROM _rekap_classroom_excel
                  WHERE status_data = 'publish' AND (member_nip ILIKE ? OR member_name ILIKE ?)
@@ -79,7 +82,7 @@ export async function GET(request: Request) {
         GROUP BY t.member_id
         ORDER BY jpl DESC, nama ASC
         LIMIT ${MAX_RESULTS}`,
-      [like, like],
+      [...(allowedIds ? [allowedIds] : []), like, like],
     );
 
     const ids = empRows.map(r => Number(r.id));
@@ -114,10 +117,10 @@ export async function GET(request: Request) {
                 MAX(r.jpl) AS jpl
            FROM _rekap_classroom_excel r
            LEFT JOIN _learning_kategori kk ON kk.id = r.kategori
-          WHERE r.status_data = 'publish' AND r.member_id = ANY(?)
+          WHERE r.status_data = 'publish' AND r.member_id = ANY(?)${scopeSql}
           GROUP BY r.member_id, ${SESSION_KEY}, year
           ORDER BY r.tgl_pelatihan_mulai DESC, r.nama_pelatihan ASC`,
-        [ids],
+        [ids, ...(allowedIds ? [allowedIds] : [])],
       );
 
       const byId = new Map(employees.map(e => [e.id, e]));
