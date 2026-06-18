@@ -113,6 +113,15 @@ export async function listUsers(): Promise<(AuthUser & { created_at: string; is_
   return rows.map(r => ({ ...toAuthUser(r), created_at: r.created_at, is_active: !!r.is_active }));
 }
 
+/** Ambil satu user (untuk pengecekan wewenang), atau null. */
+export async function getUserById(id: string): Promise<AuthUser | null> {
+  const r = await queryOne<{ id: number; username: string; nama: string | null; role: Role; scope: string | null }>(
+    "SELECT id, username, nama, role, scope FROM app_users WHERE id = ? LIMIT 1",
+    [id],
+  );
+  return r ? toAuthUser(r) : null;
+}
+
 /** Aktif/nonaktifkan user. User nonaktif tak bisa login & sesinya ditolak. */
 export async function setUserActive(id: string, active: boolean): Promise<{ ok: boolean; error?: string }> {
   const existing = await queryOne<{ id: number }>("SELECT id FROM app_users WHERE id = ? LIMIT 1", [id]);

@@ -123,8 +123,15 @@ export async function POST(request: Request) {
   if (action === "reject" && !catatan) return Response.json({ error: "Catatan penolakan wajib diisi." }, { status: 400 });
 
   try {
+    // Batasi ke IDP yang member-nya berada dalam cakupan admin (out-of-scope → 404).
+    const sc = scopeWhere(g.user, "g.group_name");
     const row = await queryOne<RowDataPacket & { status_idp: string | null }>(
-      `SELECT status_idp FROM _idp WHERE id = ?`, [id],
+      `SELECT i.status_idp
+         FROM _idp i
+         LEFT JOIN _member m ON m.member_id::text = i.member_id
+         LEFT JOIN _group g ON g.group_id = m.group_id
+        WHERE i.id = ?${sc.sql ? ` AND ${sc.sql}` : ""}`,
+      [id, ...sc.params],
     );
     if (!row) return Response.json({ error: "IDP tidak ditemukan." }, { status: 404 });
     if (!PENDING.includes((row.status_idp ?? "").toLowerCase())) {

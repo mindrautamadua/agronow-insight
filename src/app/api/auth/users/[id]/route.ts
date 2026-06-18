@@ -1,5 +1,5 @@
-import { getSessionUser, updateUser, setUserActive } from "@/lib/authServer";
-import { isAdminRole, parseRole, needsScope } from "@/lib/roles";
+import { getSessionUser, updateUser, setUserActive, getUserById } from "@/lib/authServer";
+import { isAdminRole, parseRole, needsScope, canManageUser } from "@/lib/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +13,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   // Admin bawaan (hardcoded) tidak tersimpan di DB, tak bisa diedit.
   if (id === "0") return Response.json({ error: "User bawaan tidak dapat diubah." }, { status: 400 });
+
+  // Wewenang atas user target (peran+cakupan saat ini harus dalam wewenang manajer).
+  const target = await getUserById(id);
+  if (!target) return Response.json({ error: "User tidak ditemukan." }, { status: 404 });
+  if (!canManageUser(me, target.role, target.scope)) {
+    return Response.json({ error: "Tidak berwenang mengelola user ini." }, { status: 403 });
+  }
 
   let b: Record<string, unknown>;
   try {
@@ -37,6 +44,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const scope = needsScope(role) ? String(b.scope ?? "").trim() : "";
   if (needsScope(role) && !scope) {
     return Response.json({ error: "Cakupan (scope) wajib diisi untuk peran ini." }, { status: 400 });
+  }
+  // Cegah eskalasi: peran+cakupan BARU pun harus di dalam wewenang manajer.
+  if (!canManageUser(me, role, scope || null)) {
+    return Response.json({ error: "Tidak berwenang menetapkan peran/cakupan tersebut." }, { status: 403 });
   }
   const password = b.password == null ? "" : String(b.password);
 

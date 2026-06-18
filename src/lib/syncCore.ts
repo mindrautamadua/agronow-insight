@@ -60,7 +60,32 @@ export async function runSync(my: Connection, pg: Pool): Promise<TableResult[]> 
     try { out.push(await syncTable(my, pg, cfg)); }
     catch (e) { out.push({ table: cfg.name, upserted: 0, deleted: 0, error: (e as Error).message }); }
   }
+  // Post-sync: normalisasi identitas rekap dari master `_member`.
+  try { out.push(await normalizeRekapNames(pg)); }
+  catch (e) { out.push({ table: "_rekap_classroom_excel:normalize", upserted: 0, deleted: 0, error: (e as Error).message }); }
   return out;
+}
+
+/**
+ * Timpa `_rekap_classroom_excel.member_name` dengan nama kanonik dari `_member`
+ * (di-key oleh member_id). Kolom snapshot ini terbukti rusak — saat impor Excel
+ * kolom nama tergeser relatif terhadap member_id sehingga sebagian baris memuat
+ * nama orang lain (~10% baris publish; lihat audit Fase 1). `member_id` &
+ * `member_nip` TETAP akurat (cek NIP cocok 100%), jadi penimpaan ini aman dan
+ * sekaligus menyeragamkan ejaan. Idempotent & self-healing: dijalankan tiap sync
+ * sehingga baris yang baru ter-upsert dari MySQL ikut dibersihkan kembali.
+ * Aplikasi sendiri sudah membaca identitas dari `_member`; langkah ini menjaga
+ * tabel sumber agar tidak menyesatkan query/fitur yang membaca rekap langsung.
+ */
+async function normalizeRekapNames(pg: Pool): Promise<TableResult> {
+  const res = await pg.query(
+    `UPDATE _rekap_classroom_excel r
+        SET member_name = m.member_name
+       FROM _member m
+      WHERE m.member_id = r.member_id
+        AND NULLIF(TRIM(m.member_name), '') IS NOT NULL
+        AND r.member_name IS DISTINCT FROM m.member_name`);
+  return { table: "_rekap_classroom_excel:normalize", upserted: res.rowCount ?? 0, deleted: 0 };
 }
 
 async function syncTable(my: Connection, pg: Pool, cfg: TableCfg): Promise<TableResult> {

@@ -77,3 +77,67 @@ export function needsScope(role: Role | string | null | undefined): boolean {
 export function scopeLevelLabel(role: Role | string | null | undefined): string {
   return { global: "Semua", holding: "Holding", anper: "Anak Perusahaan", regional: "Regional" }[scopeLevel(role)];
 }
+
+// ── Otoritas manajemen user & operasi tulis ──────────────────────────────────
+/**
+ * Keluasan wewenang sebuah peran (makin besar makin luas):
+ * global(3) > holding(2) > anper(1) > regional(0). Dipakai untuk membatasi
+ * peran apa yang boleh diberikan & user mana yang boleh dikelola seorang admin.
+ */
+export function roleBreadth(role: Role | string | null | undefined): number {
+  return { global: 3, holding: 2, anper: 1, regional: 0 }[scopeLevel(role)];
+}
+
+/**
+ * Bolehkah `managerRole` memberikan/menetapkan `targetRole`?
+ *  - super_admin: bebas (termasuk membuat super_admin lain).
+ *  - selain itu: hanya peran dengan keluasan ≤ keluasannya, dan tak boleh super_admin.
+ */
+export function canAssignRole(managerRole: Role | string, targetRole: Role | string): boolean {
+  if (targetRole === "super_admin") return managerRole === "super_admin";
+  return roleBreadth(targetRole) <= roleBreadth(managerRole);
+}
+
+/**
+ * Apakah cakupan `targetScope` berada DI DALAM wewenang seorang manajer
+ * (managerRole + managerScope)?
+ *  - global/holding: mencakup semua (true).
+ *  - anper (scope X): target = X, atau regional di bawahnya ("X - …").
+ *  - regional (scope Y): hanya target = Y.
+ * Manajer bercakupan tanpa scope, atau target tanpa scope, → false.
+ */
+export function scopeContains(
+  managerRole: Role | string,
+  managerScope: string | null | undefined,
+  targetScope: string | null | undefined,
+): boolean {
+  const lvl = scopeLevel(managerRole);
+  if (lvl === "global" || lvl === "holding") return true;
+  const ms = (managerScope ?? "").trim();
+  const ts = (targetScope ?? "").trim();
+  if (!ms || !ts) return false;
+  if (lvl === "regional") return ts === ms;
+  return ts === ms || ts.startsWith(`${ms} - `); // anper
+}
+
+/**
+ * Bolehkah manajer mengelola (lihat/buat/ubah) seorang user dengan peran+cakupan
+ * tertentu? Gabungan: keluasan peran cocok DAN cakupan termasuk wewenang manajer.
+ */
+export function canManageUser(
+  manager: { role: Role | string; scope: string | null },
+  targetRole: Role | string,
+  targetScope: string | null | undefined,
+): boolean {
+  if (!isAdminRole(manager.role)) return false;
+  if (!canAssignRole(manager.role, targetRole)) return false;
+  // Peran berskala (anper/regional) wajib cakupan yang termasuk wewenang manajer.
+  if (needsScope(targetRole)) return scopeContains(manager.role, manager.scope, targetScope);
+  // Peran holding/global hanya boleh dikelola admin global/holding.
+  return roleBreadth(targetRole) <= roleBreadth(manager.role);
+}
+
+/** True bila admin tak dibatasi cakupan (super_admin / *_holding). */
+export function isGlobalAdmin(role: Role | string | null | undefined): boolean {
+  return isAdminRole(role) && roleBreadth(role) >= 2;
+}

@@ -14,6 +14,14 @@ export const dynamic = "force-dynamic";
  * JPL didedup per sesi (1 nilai per training via SESSION_KEY) agar tidak
  * terhitung berulang per baris peserta. Mengembalikan total JPL, jumlah sesi,
  * rincian per tahun, dan daftar pelatihan tiap karyawan yang cocok.
+ *
+ * Identitas (nama/NIK/jabatan/unit) diambil dari master `_member` via
+ * `member_id`, BUKAN dari kolom snapshot `member_name`/`member_nip` di rekap —
+ * kolom snapshot itu tidak ternormalisasi (satu member_id bisa memuat nama
+ * orang lain), sehingga `MAX(member_name)` dulu sempat menampilkan nama yang
+ * salah. `_member` dipakai juga untuk mencocokkan pencarian agar orang yang
+ * keliru ter-label tidak ikut muncul. Fallback ke snapshot rekap bila
+ * member_id tidak ada di `_member`.
  */
 const SESSION_KEY = "r.nama_pelatihan, r.tgl_pelatihan_mulai, r.tgl_pelatihan_selesai";
 const MAX_RESULTS = 50;
@@ -65,17 +73,25 @@ export async function GET(request: Request) {
               SUM(t.jpl) AS jpl, COUNT(*) AS sesi
          FROM (
            SELECT r.member_id,
-                  MAX(r.member_name) AS nama, MAX(r.member_nip) AS nip,
-                  MAX(r.jabatan) AS jabatan, MAX(r.unit_kerja) AS unit, MAX(r.level) AS level,
+                  COALESCE(MAX(m.member_name), MAX(r.member_name)) AS nama,
+                  COALESCE(MAX(m.member_nip), MAX(r.member_nip)) AS nip,
+                  COALESCE(MAX(m.member_jabatan), MAX(r.jabatan)) AS jabatan,
+                  COALESCE(MAX(m.member_unit_kerja), MAX(r.unit_kerja)) AS unit,
+                  MAX(r.level) AS level,
                   MAX(grp.group_name) AS entitas, MAX(ep.photo_url) AS photo,
                   MAX(r.jpl) AS jpl
              FROM _rekap_classroom_excel r
+             LEFT JOIN _member m ON m.member_id = r.member_id
              LEFT JOIN _group grp ON grp.group_id = r.group_id
-             LEFT JOIN employee_photos ep ON ep.nip = r.member_nip
+             LEFT JOIN employee_photos ep ON ep.nip = COALESCE(m.member_nip, r.member_nip)
             WHERE r.status_data = 'publish'${scopeSql}
               AND r.member_id IN (
-                SELECT DISTINCT member_id FROM _rekap_classroom_excel
-                 WHERE status_data = 'publish' AND (member_nip ILIKE ? OR member_name ILIKE ?)
+                SELECT DISTINCT r2.member_id
+                  FROM _rekap_classroom_excel r2
+                  LEFT JOIN _member m2 ON m2.member_id = r2.member_id
+                 WHERE r2.status_data = 'publish'
+                   AND (COALESCE(m2.member_nip, r2.member_nip) ILIKE ?
+                        OR COALESCE(m2.member_name, r2.member_name) ILIKE ?)
               )
             GROUP BY r.member_id, ${SESSION_KEY}
          ) t

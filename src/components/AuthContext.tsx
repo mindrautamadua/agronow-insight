@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { isAdminRole, type Role } from "@/lib/roles";
 
 export type { Role };
-export interface AuthUser { id: string; username: string; nama: string | null; role: Role }
+export interface AuthUser { id: string; username: string; nama: string | null; role: Role; scope: string | null }
 
 interface AuthContextValue {
   user: AuthUser | null;

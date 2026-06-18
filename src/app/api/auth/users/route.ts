@@ -1,15 +1,17 @@
 import { getSessionUser, listUsers, createUser } from "@/lib/authServer";
-import { isAdminRole, parseRole, needsScope } from "@/lib/roles";
+import { isAdminRole, parseRole, needsScope, canManageUser } from "@/lib/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// GET /api/auth/users — daftar user (admin)
+// GET /api/auth/users — daftar user (admin). Admin bercakupan hanya melihat
+// user di dalam wewenangnya (anper/regional miliknya).
 export async function GET() {
   const me = await getSessionUser();
   if (!me) return Response.json({ error: "Belum login." }, { status: 401 });
   if (!isAdminRole(me.role)) return Response.json({ error: "Tidak berwenang." }, { status: 403 });
-  const users = await listUsers();
+  const all = await listUsers();
+  const users = all.filter(u => canManageUser(me, u.role, u.scope) || String(u.id) === String(me.id));
   return Response.json({ users });
 }
 
@@ -36,6 +38,10 @@ export async function POST(request: Request) {
   const scope = needsScope(role) ? String(b.scope ?? "").trim() : "";
   if (needsScope(role) && !scope) {
     return Response.json({ error: "Cakupan (scope) wajib diisi untuk peran ini." }, { status: 400 });
+  }
+  // Cegah eskalasi: admin hanya boleh membuat user di dalam wewenang & cakupannya.
+  if (!canManageUser(me, role, scope || null)) {
+    return Response.json({ error: "Tidak berwenang membuat user dengan peran/cakupan tersebut." }, { status: 403 });
   }
   const res = await createUser(
     username,

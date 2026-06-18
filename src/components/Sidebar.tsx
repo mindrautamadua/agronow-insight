@@ -29,6 +29,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/eksternal", icon: ExternalLink, label: "Penggunaan Eksternal" },
+      { href: "/cari-jpl", icon: Clock, label: "Cari JPL Karyawan" },
     ],
   },
   {
@@ -51,7 +52,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "SDM",
     items: [
       { href: "/employees",      icon: Users, label: "Peserta" },
-      { href: "/cari-jpl",       icon: Clock, label: "Cari JPL Karyawan" },
       { href: "/idp-verifikasi", icon: ClipboardCheck, label: "Verifikasi IDP" },
       { href: "/certifications", icon: Award, label: "Sertifikasi" },
     ],

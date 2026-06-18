@@ -124,10 +124,14 @@ export async function GET(request: Request) {
       return { ...base, flags: flagsFor(base) };
     });
 
+    // Identitas peserta (nama/NIK/unit/level) dari master `_member`, bukan kolom
+    // snapshot rekap yang tidak ternormalisasi. Fallback ke rekap bila orphan.
     const pesertaRows = await query<PesertaRow>(
       `SELECT r.member_id,
-              MAX(r.member_name) AS nama, MAX(r.member_nip) AS nip,
-              MAX(r.unit_kerja) AS unit, MAX(r.level) AS level,
+              COALESCE(MAX(m.member_name), MAX(r.member_name)) AS nama,
+              COALESCE(MAX(m.member_nip), MAX(r.member_nip)) AS nip,
+              COALESCE(MAX(m.member_unit_kerja), MAX(r.unit_kerja)) AS unit,
+              COALESCE(MAX(lk.nama), MAX(r.level)) AS level,
               r.nama_pelatihan AS pelatihan,
               r.tgl_pelatihan_mulai::date AS tgl_mulai,
               r.tgl_pelatihan_selesai::date AS tgl_selesai,
@@ -135,8 +139,10 @@ export async function GET(request: Request) {
               MAX(kk.nama) AS kategori, MAX(kk.kategori) AS sub,
               MAX(r.jpl) AS jpl, SUM(r.biaya) AS biaya, MAX(ep.photo_url) AS photo
          FROM _rekap_classroom_excel r
+         LEFT JOIN _member m ON m.member_id = r.member_id
+         LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
          LEFT JOIN _learning_kategori kk ON kk.id = r.kategori
-         LEFT JOIN employee_photos ep ON ep.nip = r.member_nip
+         LEFT JOIN employee_photos ep ON ep.nip = COALESCE(m.member_nip, r.member_nip)
         WHERE ${W}
         GROUP BY r.member_id, ${SESSION_KEY}
         ORDER BY r.tgl_pelatihan_mulai DESC, nama ASC`, P);

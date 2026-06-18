@@ -1,4 +1,4 @@
-import { requireUser, requireAdmin } from "@/lib/apiAuth";
+import { requireUser, requireGlobalAdmin } from "@/lib/apiAuth";
 import { query, queryOne, execute } from "@/lib/db";
 import { Client } from "pg";
 
@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 export async function POST() {
-  const g = await requireAdmin();
+  const g = await requireGlobalAdmin();
   if ("response" in g) return g.response;
 
   const url = process.env.IHCMIS_DB_URL;

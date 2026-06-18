@@ -51,12 +51,22 @@ export async function GET(request: Request) {
               MAX(t.jabatan) AS jabatan, MAX(t.unit) AS unit, MAX(t.level) AS level,
               SUM(t.jpl) AS jpl, COUNT(*) AS sesi, MAX(t.photo) AS photo
          FROM (
+           -- Identitas (nama/NIK/jabatan/unit/level) diambil dari master _member,
+           -- bukan kolom snapshot rekap yang tidak ternormalisasi. Fallback ke rekap
+           -- hanya bila member_id tak ada di _member.
            SELECT r.member_id,
-                  MAX(r.member_name) AS nama, MAX(r.member_nip) AS nip,
-                  MAX(r.jabatan) AS jabatan, MAX(r.unit_kerja) AS unit, MAX(r.level) AS level,
+                  COALESCE(MAX(m.member_name), MAX(r.member_name)) AS nama,
+                  COALESCE(MAX(m.member_nip), MAX(r.member_nip)) AS nip,
+                  COALESCE(NULLIF(TRIM(MAX(m.member_jabatan)), ''),
+                           NULLIF(TRIM(MAX(m.member_kel_jabatan)), ''),
+                           MAX(r.jabatan)) AS jabatan,
+                  COALESCE(MAX(m.member_unit_kerja), MAX(r.unit_kerja)) AS unit,
+                  COALESCE(MAX(lk.nama), MAX(r.level)) AS level,
                   MAX(r.jpl) AS jpl, MAX(ep.photo_url) AS photo
              FROM _rekap_classroom_excel r
-             LEFT JOIN employee_photos ep ON ep.nip = r.member_nip
+             LEFT JOIN _member m ON m.member_id = r.member_id
+             LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
+             LEFT JOIN employee_photos ep ON ep.nip = COALESCE(m.member_nip, r.member_nip)
             WHERE r.group_id = ? AND EXTRACT(YEAR FROM r.tgl_pelatihan_mulai)::int = ? AND r.status_data = 'publish'
             GROUP BY r.member_id, ${SESSION_KEY}
          ) t

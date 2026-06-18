@@ -105,8 +105,14 @@ export async function GET(request: Request) {
     for (const r of monthAgg) { const e = byMonth.get(Number(r.bln))!; e.biaya = Number(r.biaya ?? 0); e.peserta = Number(r.peserta ?? 0); }
     const monthly = [...byMonth.entries()].map(([bln, v]) => ({ bln, ...v }));
 
+    // Level diambil dari master `_member` (bukan kolom snapshot rekap). Total JPL
+    // tidak berubah — hanya label level yang dikoreksi ke level karyawan sebenarnya.
     const levelRows = await query<BarRow>(
-      `SELECT r.level AS label, SUM(r.jpl) AS jpl FROM _rekap_classroom_excel r WHERE ${W} GROUP BY r.level`, P);
+      `SELECT COALESCE(lk.nama, r.level) AS label, SUM(r.jpl) AS jpl
+         FROM _rekap_classroom_excel r
+         LEFT JOIN _member m ON m.member_id = r.member_id
+         LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
+        WHERE ${W} GROUP BY COALESCE(lk.nama, r.level)`, P);
     const levelMap = new Map<string, number>();
     for (const r of levelRows) {
       const k = normLevel(r.label);

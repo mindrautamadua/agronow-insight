@@ -7,7 +7,7 @@
  * yang harus langsung di-return oleh handler.
  */
 import { getSessionUser, type AuthUser } from "./authServer";
-import { isAdminRole } from "./roles";
+import { isAdminRole, isGlobalAdmin } from "./roles";
 
 export async function requireUser(): Promise<{ user: AuthUser } | { response: Response }> {
   const user = await getSessionUser();
@@ -19,5 +19,16 @@ export async function requireAdmin(): Promise<{ user: AuthUser } | { response: R
   const user = await getSessionUser();
   if (!user) return { response: Response.json({ error: "Belum login." }, { status: 401 }) };
   if (!isAdminRole(user.role)) return { response: Response.json({ error: "Khusus Administrator." }, { status: 403 }) };
+  return { user };
+}
+
+/**
+ * Guard untuk operasi pemeliharaan lintas-organisasi (mis. sinkronisasi data
+ * massal) — hanya admin tanpa batas cakupan (super_admin / *_holding).
+ */
+export async function requireGlobalAdmin(): Promise<{ user: AuthUser } | { response: Response }> {
+  const user = await getSessionUser();
+  if (!user) return { response: Response.json({ error: "Belum login." }, { status: 401 }) };
+  if (!isGlobalAdmin(user.role)) return { response: Response.json({ error: "Khusus Administrator Holding." }, { status: 403 }) };
   return { user };
 }

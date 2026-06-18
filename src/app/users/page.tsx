@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { UserCog, Plus, X, Loader2, ShieldCheck, Eye, Search, Pencil, Ban, RotateCcw } from "lucide-react";
 import { fmtDate } from "@/lib/utils";
 import { ListSkeleton, EmptyState } from "@/components/ui";
-import { ROLES, isAdminRole, roleLabel, needsScope, type Role } from "@/lib/roles";
+import { ROLES, isAdminRole, roleLabel, needsScope, canAssignRole, type Role } from "@/lib/roles";
+import { useAuth } from "@/components/AuthContext";
 
 interface AppUserRow { id: string; username: string; nama: string | null; role: Role; scope: string | null; created_at: string; is_active: boolean }
 
@@ -149,6 +150,10 @@ function UserModal({ editing, onClose, onSaved }: { editing: AppUserRow | null; 
       .then(d => { if (d?.entitas) setEntitas(d.entitas); }).catch(() => {});
   }, []);
 
+  const { user: me } = useAuth();
+  // Hanya peran yang boleh diberikan oleh admin yang sedang login.
+  const assignableRoles = ROLES.filter(r => !me || canAssignRole(me.role, r));
+
   const showScope = needsScope(form.role);
   const scopeIsRegional = form.role.endsWith("_regional");
   const scopeOptions = scopeIsRegional
@@ -189,10 +194,10 @@ function UserModal({ editing, onClose, onSaved }: { editing: AppUserRow | null; 
           <label className="block"><span className="text-[11px] font-medium text-[var(--muted)] mb-1 block">Role</span>
             <select value={form.role} onChange={e => set("role", e.target.value)} className={inputCls}>
               <optgroup label="Admin (akses tulis)">
-                {ROLES.filter(isAdminRole).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                {assignableRoles.filter(isAdminRole).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
               </optgroup>
               <optgroup label="Viewer (read-only)">
-                {ROLES.filter(r => !isAdminRole(r)).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                {assignableRoles.filter(r => !isAdminRole(r)).map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
               </optgroup>
             </select>
           </label>

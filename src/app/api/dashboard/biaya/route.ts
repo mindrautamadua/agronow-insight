@@ -77,12 +77,21 @@ export async function GET(request: Request) {
     const peserta = Number(kpiAgg?.peserta ?? 0);
     const jpl = Number(sesAgg?.jpl ?? 0);
 
+    // Unit & level dikelompokkan dari master `_member` (bukan kolom snapshot rekap
+    // yang tidak ternormalisasi) agar biaya dikaitkan ke unit/level yang benar.
+    // Total biaya tidak berubah — hanya label pengelompokan yang dikoreksi.
     const unitRows = await query<BiayaRow>(
-      `SELECT r.unit_kerja AS label, SUM(r.biaya) AS biaya FROM _rekap_classroom_excel r WHERE ${W} GROUP BY r.unit_kerja`, P);
+      `SELECT COALESCE(m.member_unit_kerja, r.unit_kerja) AS label, SUM(r.biaya) AS biaya
+         FROM _rekap_classroom_excel r LEFT JOIN _member m ON m.member_id = r.member_id
+        WHERE ${W} GROUP BY COALESCE(m.member_unit_kerja, r.unit_kerja)`, P);
     const penyRows = await query<BiayaRow>(
       `SELECT r.penyelenggara AS label, SUM(r.biaya) AS biaya FROM _rekap_classroom_excel r WHERE ${W} GROUP BY r.penyelenggara`, P);
     const levelRows = await query<BiayaRow>(
-      `SELECT r.level AS label, SUM(r.biaya) AS biaya FROM _rekap_classroom_excel r WHERE ${W} GROUP BY r.level`, P);
+      `SELECT COALESCE(lk.nama, r.level) AS label, SUM(r.biaya) AS biaya
+         FROM _rekap_classroom_excel r
+         LEFT JOIN _member m ON m.member_id = r.member_id
+         LEFT JOIN _member_level_karyawan lk ON lk.id = m.id_level_karyawan
+        WHERE ${W} GROUP BY COALESCE(lk.nama, r.level)`, P);
     const katRows = await query<BiayaRow>(
       `SELECT kk.nama AS label, SUM(r.biaya) AS biaya
          FROM _rekap_classroom_excel r LEFT JOIN _learning_kategori kk ON kk.id = r.kategori

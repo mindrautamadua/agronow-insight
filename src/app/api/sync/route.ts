@@ -1,4 +1,4 @@
-import { requireAdmin, requireUser } from "@/lib/apiAuth";
+import { requireGlobalAdmin, requireUser } from "@/lib/apiAuth";
 import { query, getPool } from "@/lib/db";
 import { runSync } from "@/lib/syncCore";
 import mysql from "mysql2/promise";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   const secret = process.env.SYNC_SECRET;
   const headerSecret = request.headers.get("x-sync-secret");
   if (!(secret && headerSecret && headerSecret === secret)) {
-    const g = await requireAdmin();
+    const g = await requireGlobalAdmin();
     if ("response" in g) return g.response;
   }
 
