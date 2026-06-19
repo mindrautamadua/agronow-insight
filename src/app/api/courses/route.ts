@@ -31,6 +31,14 @@ interface KatalogRow extends RowDataPacket {
   catatan_level_peserta: string | null;
   pic: string | null;
   rekomendasi_grup: string | null;
+  metode1_id: number | null;
+  metode2_id: number | null;
+  metode3_id: number | null;
+}
+
+interface MetodeRow extends RowDataPacket {
+  id: number;
+  nama: string | null;
 }
 
 // "[1][2][3][8]" → "1, 2, 3, 8". Nilai non-angka/kosong → null.
@@ -65,11 +73,31 @@ export async function GET() {
               jpl_total, durasi_hari, harga, status,
               silabus, sasaran_pembelajaran, penugasan_pasca_pelatihan,
               kata_kunci, minimal_peserta, daftar_level_karyawan,
-              catatan_level_peserta, pic, rekomendasi_grup
+              catatan_level_peserta, pic, rekomendasi_grup,
+              metode1_id, metode2_id, metode3_id
          FROM _learning_katalog
         WHERE status <> 'dihapus'
         ORDER BY nama ASC`,
     );
+
+    // Lookup metode pembelajaran (model 70-20-10) dari _learning_kategori.
+    const metodeRows = await query<MetodeRow>(
+      `SELECT id, nama FROM _learning_kategori
+        WHERE kategori LIKE 'metode_belajar%' AND status <> 'block'`,
+    );
+    const metodeById = new Map<number, string>();
+    for (const m of metodeRows) {
+      const nama = clean(m.nama);
+      if (nama) metodeById.set(m.id, nama);
+    }
+    const resolveMetode = (r: KatalogRow): string[] => {
+      const out: string[] = [];
+      for (const id of [r.metode1_id, r.metode2_id, r.metode3_id]) {
+        const nama = id ? metodeById.get(id) : undefined;
+        if (nama && !out.includes(nama)) out.push(nama);
+      }
+      return out;
+    };
 
     const courses = rows.map((r) => ({
       id: r.id,
@@ -96,6 +124,7 @@ export async function GET() {
       catatan_peserta: clean(r.catatan_level_peserta),
       pic: r.pic?.trim() && r.pic.trim() !== "-" ? r.pic.trim() : null,
       rekomendasi_grup: clean(r.rekomendasi_grup),
+      metode_belajar: resolveMetode(r),
     }));
 
     return Response.json({ courses });

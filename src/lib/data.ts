@@ -38,6 +38,7 @@ export interface Course {
   catatan_peserta: string | null;
   pic: string | null;
   rekomendasi_grup: string | null;
+  metode_belajar: string[];            // metode pembelajaran 70-20-10 (dari metode1/2/3_id)
 }
 
 export interface TrainingSession {

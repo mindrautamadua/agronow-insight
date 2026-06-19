@@ -44,6 +44,7 @@ export default function CoursesPage() {
   const [q, setQ] = useState("");
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
   const [mode, setMode] = useState("");
+  const [metodeBelajar, setMetodeBelajar] = useState("");
   const [tahun, setTahun] = useState("");
   const [priceLo, setPriceLo] = useState<number | null>(null);
   const [priceHi, setPriceHi] = useState<number | null>(null);
@@ -65,6 +66,10 @@ export default function CoursesPage() {
     () => Array.from(new Set(courses.map(c => c.mode).filter((m): m is string => !!m))).sort(),
     [courses],
   );
+  const metodeBelajarOpts = useMemo(
+    () => Array.from(new Set(courses.flatMap(c => c.metode_belajar))).sort(),
+    [courses],
+  );
   const years = useMemo(
     () => Array.from(new Set(courses.map(c => c.tahun).filter((t): t is number => t != null))).sort((a, b) => b - a),
     [courses],
@@ -78,6 +83,7 @@ export default function CoursesPage() {
     const s = q.trim().toLowerCase();
     return courses.filter(c => {
       if (mode && c.mode !== mode) return false;
+      if (metodeBelajar && !c.metode_belajar.includes(metodeBelajar)) return false;
       if (tahun && String(c.tahun ?? "") !== tahun) return false;
       const biaya = c.biaya ?? 0;
       if (priceLo !== null && biaya < priceLo) return false;
@@ -85,7 +91,7 @@ export default function CoursesPage() {
       if (!s) return true;
       return [c.judul, c.kategori].some(v => (v ?? "").toLowerCase().includes(s));
     });
-  }, [courses, q, mode, tahun, priceLo, priceHi]);
+  }, [courses, q, mode, metodeBelajar, tahun, priceLo, priceHi]);
 
   const incompleteTotal = useMemo(() => scoped.filter(c => missingFields(c).length > 0).length, [scoped]);
 
@@ -144,6 +150,13 @@ export default function CoursesPage() {
             className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--primary)]/50 transition-colors capitalize">
             <option value="">Semua mode</option>
             {modes.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
+        {!loading && metodeBelajarOpts.length > 0 && (
+          <select value={metodeBelajar} onChange={e => setMetodeBelajar(e.target.value)}
+            className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2.5 text-sm text-[var(--foreground)] outline-none focus:border-[var(--primary)]/50 transition-colors">
+            <option value="">Semua metode pembelajaran</option>
+            {metodeBelajarOpts.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         )}
         {!loading && priceMax > 0 && priceLo !== null && priceHi !== null && (
@@ -322,6 +335,17 @@ function CourseDetailModal({ course: c, onClose }: { course: Course; onClose: ()
               </div>
             );
           })}
+
+          {c.metode_belajar.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5 mb-1.5"><Layers className="w-3.5 h-3.5 text-[var(--muted)]" />Metode Pembelajaran</p>
+              <div className="flex flex-wrap gap-1.5">
+                {c.metode_belajar.map(m => (
+                  <span key={m} className="text-[11px] rounded-md border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-2 py-0.5 text-[var(--primary)]">{m}</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {c.kata_kunci && (
             <div>
