@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b1120;
+  /* Deep near-black navy — diperdalam dari #0b1120 agar nuansa "black" lebih
+     kuat & glow/aurora hijau lebih menonjol (selaras themeColor dark #070b15). */
+  --background: #070b14;
   /* Glassmorphism: surface translucent, di-blur via aturan .bg-[var(--bg-card)] di bawah. */
   --bg-card: rgba(17, 24, 39, 0.48);
   --bg-card2: rgba(26, 34, 53, 0.32);
@@ -148,6 +150,35 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .bg-\[var\(--background\)\]::before { animation: none; }
+}
+
+/* Bottom glow — degradasi hijau naik dari dasar viewport (mengadopsi nuansa
+   agronow-ess: `linear-gradient(to top, #2E7409, …)`). Dipasang di ::after pada
+   shell yang sama dengan aurora (::before); absolute bottom + z-index -1 → tetap
+   di belakang konten. Shell `h-full` setinggi viewport, jadi glow selalu menempel
+   di dasar layar. Emerald dipilih agar selaras dengan blob aurora yang sudah ada.
+   Paling menonjol di tema gelap; pada tema terang dibuat tipis. */
+.bg-\[var\(--background\)\]::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 42vh;
+  z-index: -1;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.24),
+    rgba(16, 185, 129, 0.09) 32%,
+    transparent 66%
+  );
+}
+[data-theme="light"] .bg-\[var\(--background\)\]::after {
+  background-image: linear-gradient(
+    to top,
+    rgba(16, 185, 129, 0.10),
+    transparent 52%
+  );
 }
 
 /* Fallback: bila backdrop-filter tak didukung, kembalikan surface ke opaque

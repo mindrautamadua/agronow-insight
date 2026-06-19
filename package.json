@@ -6,16 +6,13 @@
     "dev": "next dev -p 3030",
     "build": "next build",
     "start": "next start -p 3030",
-    "lint": "eslint",
-    "db:setup": "node scripts/db-setup.mjs",
-    "sync": "node --experimental-strip-types scripts/sync.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
-    "mysql2": "^3.11.5",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -29,7 +26,6 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "dotenv": "^16.4.7",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "pg": "^8.21.0",

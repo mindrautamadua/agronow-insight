@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/apiAuth";
 import { scopeGroupIds } from "@/lib/scope";
 import { query, queryOne } from "@/lib/db";
-import type { RowDataPacket } from "mysql2";
+import type { RowDataPacket } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ const clean = (v: string | null): string | null => {
 };
 
 interface BarRow extends RowDataPacket { label: string | null; n: number }
-interface KelasRow extends RowDataPacket { label: string | null; enrolled: number; hadir: number }
+interface KelasRow extends RowDataPacket { cr_id: number; label: string | null; enrolled: number; hadir: number }
 
 export async function GET() {
   const g = await requireUser();
@@ -66,7 +66,7 @@ export async function GET() {
        ) t WHERE rate IS NOT NULL GROUP BY 1`, A2);
 
     const perKelas = await query<KelasRow>(
-      `SELECT cr.cr_name AS label, COALESCE(cm.enrolled, 0) AS enrolled, COUNT(DISTINCT a.member_id) AS hadir
+      `SELECT cr.cr_id, cr.cr_name AS label, COALESCE(cm.enrolled, 0) AS enrolled, COUNT(DISTINCT a.member_id) AS hadir
          FROM _classroom_attendance a
          JOIN _classroom cr ON cr.cr_id = a.cr_id
          LEFT JOIN ${enrolledSub} cm ON cm.cr_id = a.cr_id
@@ -98,7 +98,7 @@ export async function GET() {
       perKelas: perKelas.map(r => {
         const enrolled = Number(r.enrolled), hadir = Number(r.hadir);
         const rate = enrolled > 0 ? Math.min(100, Math.round((hadir / enrolled) * 1000) / 10) : null;
-        return { label: clean(r.label) ?? "(Tanpa nama)", enrolled, hadir, rate };
+        return { crId: Number(r.cr_id), label: clean(r.label) ?? "(Tanpa nama)", enrolled, hadir, rate };
       }),
       presensiV2: {
         rekam: Number(v2?.rekam ?? 0), peserta: Number(v2?.peserta ?? 0), sesi: Number(v2?.sesi ?? 0),

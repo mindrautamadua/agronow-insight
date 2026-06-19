@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/apiAuth";
 import { scopeWhere } from "@/lib/scope";
 import { query } from "@/lib/db";
-import type { RowDataPacket } from "mysql2";
+import type { RowDataPacket } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -255,7 +255,12 @@ export interface SerapanData {
 }
 
 // Kehadiran / Presensi (sumber: `_classroom_attendance`).
-export interface PresensiKelas { label: string; enrolled: number; hadir: number; rate: number | null }
+export interface PresensiKelas { crId: number; label: string; enrolled: number; hadir: number; rate: number | null }
+export interface PresensiPeserta {
+  id: number; nama: string; nip: string | null; jabatan: string | null; entitas: string | null;
+  photo: string | null; hadir: boolean; channel: string | null; waktu: string | null;
+}
+export interface PresensiDetail { crId: number; total: number; hadir: number; peserta: PresensiPeserta[] }
 export interface PresensiData {
   kpi: { kelas: number; hadir: number; checkin: number; avgRate: number };
   perChannel: { label: string; n: number }[];
@@ -331,6 +336,7 @@ export const fetchKmContent = (id: number) =>
 export const fetchSerapan = (year: number) =>
   getJSON<SerapanData>(`/api/serapan?year=${year}`);
 export const fetchPresensi = () => getJSON<PresensiData>("/api/presensi");
+export const fetchPresensiDetail = (crId: number) => getJSON<PresensiDetail>(`/api/presensi/${crId}`);
 
 // Penggunaan Eksternal — pemakaian Agronow oleh pihak di luar PTPN Group.
 export interface EksSummaryRow { metric: string; PTPN: number; Eksternal: number; Umum: number }
@@ -379,15 +385,6 @@ export interface PhotoStatus { total: number; matched: number; lastSync: string 
 export const fetchPhotoStatus = () => getJSON<PhotoStatus>("/api/photos");
 export const syncPhotos = () => postJSON<{ ok: boolean; synced: number }>("/api/photos", {});
 
-// Sync data MySQL → Supabase (tabel inti).
-export interface SyncState { table_name: string; last_watermark: string | null; last_run: string | null }
-export interface SyncRun {
-  id: number; started_at: string; finished_at: string | null; ok: boolean;
-  total_upsert: number; total_delete: number; duration_ms: number | null;
-  detail: { table: string; upserted: number; deleted: number; error?: string }[] | null; error: string | null;
-}
-export const fetchSyncStatus = () => getJSON<{ state: SyncState[]; runs: SyncRun[] }>("/api/sync");
-export const runDataSync = () => postJSON<{ ok: boolean; totalUpsert: number; totalDelete: number; durationMs: number }>("/api/sync", {});
 export const fetchCourses = () => getJSON<{ courses: Course[] }>("/api/courses").then(d => d.courses);
 export const fetchEmployees = () => getJSON<{ employees: Employee[] }>("/api/employees").then(d => d.employees);
 export const fetchEmployeesPaged = (q: string, page: number, status: string, entitas: string, sub: string) =>

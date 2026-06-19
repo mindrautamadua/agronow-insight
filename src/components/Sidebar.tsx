@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, GraduationCap, ClipboardList, Users, Award, CalendarDays,
-  Settings, ChevronRight, ChevronLeft, ChevronDown, Database, Wallet, Star, Briefcase, TrendingUp, Sparkles, UserCheck, Image as ImageIcon, ArrowRightLeft, Library, Coins, ExternalLink, Clock, ClipboardCheck, Boxes,
+  Settings, ChevronRight, ChevronLeft, ChevronDown, Database, Wallet, Star, Briefcase, TrendingUp, Sparkles, UserCheck, Image as ImageIcon, Library, Coins, ExternalLink, Clock, ClipboardCheck, Boxes,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -66,7 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Basis Data",
     items: [
       { href: "/schema", icon: Database, label: "Skema Database" },
-      { href: "/sync", icon: ArrowRightLeft, label: "Sync Data" },
       { href: "/photos", icon: ImageIcon, label: "Sync Foto" },
     ],
   },

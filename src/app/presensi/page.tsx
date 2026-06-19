@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { UserCheck, BookOpen, Users, Percent, Search, ChevronDown, Smartphone, Wifi } from "lucide-react";
-import { fetchPresensi, type PresensiData } from "@/lib/data";
+import { UserCheck, BookOpen, Users, Percent, Search, ChevronDown, Smartphone, Wifi, X, Loader2, Check, Minus } from "lucide-react";
+import { fetchPresensi, fetchPresensiDetail, type PresensiData, type PresensiKelas, type PresensiDetail } from "@/lib/data";
 import { fmtNum } from "@/lib/utils";
 import { PageSkeleton } from "@/components/ui";
 
@@ -16,6 +16,7 @@ export default function PresensiPage() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<"hadir" | "rate" | "rateAsc">("hadir");
+  const [selected, setSelected] = useState<PresensiKelas | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -104,9 +105,10 @@ export default function PresensiPage() {
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={r.label + i} className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-card2)]/50 align-middle">
+                    <tr key={r.label + i} onClick={() => setSelected(r)} title="Lihat detail peserta"
+                      className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg-card2)]/50 align-middle cursor-pointer">
                       <td className="py-2.5 px-2 text-[11px] text-[var(--muted)] tabular-nums">{i + 1}</td>
-                      <td className="py-2.5 px-2 text-[var(--foreground)] max-w-[420px]"><span className="line-clamp-2 leading-snug">{r.label}</span></td>
+                      <td className="py-2.5 px-2 text-[var(--foreground)] max-w-[420px]"><span className="line-clamp-2 leading-snug hover:text-emerald-500 transition-colors">{r.label}</span></td>
                       <td className="py-2.5 px-2 text-right tabular-nums text-[var(--muted)]">{r.enrolled || "—"}</td>
                       <td className="py-2.5 px-2 text-right tabular-nums text-[var(--foreground)]">{fmtNum(r.hadir)}</td>
                       <td className="py-2.5 px-2">
@@ -123,7 +125,97 @@ export default function PresensiPage() {
               </table>
             </div>
           )}
-          <p className="text-[11px] text-[var(--muted)]">Maks 200 kelas (urut jumlah hadir). Kehadiran = peserta hadir ÷ terdaftar (maks 100%).</p>
+          <p className="text-[11px] text-[var(--muted)]">Maks 200 kelas (urut jumlah hadir). Kehadiran = peserta hadir ÷ terdaftar (maks 100%). Klik baris kelas untuk melihat detail peserta.</p>
+        </div>
+      </div>
+
+      {selected && <KelasDetailModal kelas={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function KelasDetailModal({ kelas, onClose }: { kelas: PresensiKelas; onClose: () => void }) {
+  const [detail, setDetail] = useState<PresensiDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "hadir" | "absen">("all");
+
+  useEffect(() => {
+    setLoading(true); setErr(null);
+    fetchPresensiDetail(kelas.crId)
+      .then(setDetail)
+      .catch(() => setErr("Gagal memuat detail peserta."))
+      .finally(() => setLoading(false));
+  }, [kelas.crId]);
+
+  const list = useMemo(() => {
+    const src = detail?.peserta ?? [];
+    return filter === "hadir" ? src.filter(p => p.hadir)
+      : filter === "absen" ? src.filter(p => !p.hadir)
+      : src;
+  }, [detail, filter]);
+
+  const total = detail?.total ?? 0;
+  const hadir = detail?.hadir ?? 0;
+  const absen = total - hadir;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
+      <div className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-[var(--foreground)] leading-snug">{kelas.label}</h3>
+            <p className="text-[11px] text-[var(--muted)] mt-1">
+              {loading ? "Memuat…" : `${fmtNum(total)} terdaftar · ${fmtNum(hadir)} hadir · ${fmtNum(absen)} tidak hadir`}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 text-[var(--muted)] hover:text-[var(--foreground)] shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+
+        {!loading && !err && total > 0 && (
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-[var(--border)]">
+            {([["all", `Semua (${total})`], ["hadir", `Hadir (${hadir})`], ["absen", `Tidak hadir (${absen})`]] as const).map(([v, lbl]) => (
+              <button key={v} onClick={() => setFilter(v)}
+                className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-colors ${filter === v ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)]"}`}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="overflow-y-auto px-2 py-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-12 text-[var(--muted)]"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          ) : err ? (
+            <p className="text-sm text-red-400 text-center py-10">{err}</p>
+          ) : list.length === 0 ? (
+            <p className="text-sm text-[var(--muted)] text-center py-10">Tidak ada peserta.</p>
+          ) : (
+            <ul className="divide-y divide-[var(--border)]">
+              {list.map(p => (
+                <li key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[var(--bg-card2)] overflow-hidden flex items-center justify-center text-[11px] font-semibold text-[var(--muted)] uppercase shrink-0">
+                    {p.photo ? <img src={p.photo} alt="" className="w-full h-full object-cover" /> : p.nama.charAt(0)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-[var(--foreground)] truncate">{p.nama}</p>
+                    <p className="text-[11px] text-[var(--muted)] truncate">
+                      {[p.nip, p.jabatan, p.entitas].filter(Boolean).join(" · ") || "—"}
+                    </p>
+                  </div>
+                  {p.hadir ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
+                      <Check className="w-3 h-3" /> Hadir{p.channel ? ` · ${p.channel}` : ""}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-400 border border-slate-500/20 shrink-0">
+                      <Minus className="w-3 h-3" /> Tidak hadir
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

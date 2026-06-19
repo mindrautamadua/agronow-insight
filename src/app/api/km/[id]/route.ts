@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/apiAuth";
 import { query, queryOne } from "@/lib/db";
-import type { RowDataPacket } from "mysql2";
+import type { RowDataPacket } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

@@ -1,7 +1,10 @@
 /**
  * Postgres connection pool untuk Agronow L&D.
  *
- * Sumber data: Supabase Postgres (project `agronow`), via session pooler (IPv4).
+ * Sumber data: Supabase Postgres (project `agronow`), via transaction pooler
+ * (port 6543). Session pooler (5432) dibatasi 15 klien untuk seluruh project —
+ * dishare beberapa app agronow + HMR dev → cepat habis dan bikin query 500
+ * (EMAXCONNSESSION). Transaction pooler menampung jauh lebih banyak klien pendek.
  * Sebelumnya MySQL; kini seluruh data dibaca dari Supabase. Koneksi dari
  * `SUPABASE_DB_URL` di `.env.local`. Pool `pg` disimpan singleton lintas HMR.
  *
@@ -29,12 +32,23 @@ function createPool(): Pool {
     connectionString,
     ssl: { rejectUnauthorized: false },
     max: Number(process.env.PG_POOL_LIMIT ?? 10),
+    idleTimeoutMillis: 10_000,     // lepas koneksi idle agar tak menahan slot pooler
+    connectionTimeoutMillis: 8_000, // gagal cepat bila pooler penuh, jangan menggantung
   });
 }
 
 export function getPool(): Pool {
   if (!global.__agronowPg) global.__agronowPg = createPool();
   return global.__agronowPg;
+}
+
+/**
+ * Tipe baris hasil query — pengganti `RowDataPacket` mysql2 (sudah tak dipakai;
+ * runtime kini Postgres `pg`). Route handler memakai `interface X extends RowDataPacket`
+ * lalu menambah kolom bertipe; index signature longgar menjaga kompatibilitas.
+ */
+export interface RowDataPacket {
+  [column: string]: unknown;
 }
 
 /** Ubah placeholder `?` → `$1, $2, …` (urutan kemunculan). */

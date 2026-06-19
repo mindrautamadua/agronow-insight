@@ -27,9 +27,8 @@ const PAGE_TITLES: Record<string, { title: string; desc: string }> = {
   "/idp-verifikasi": { title: "Verifikasi IDP",    desc: "Tinjau & setujui/tolak pengajuan IDP karyawan" },
   "/certifications": { title: "Sertifikasi",      desc: "Sertifikat peserta pelatihan" },
   "/master-data":    { title: "Manajemen Master Data", desc: "Entitas, Regional & Unit Kerja korporat — sumber IHCMIS-DEV (read-only)" },
-  "/schema":         { title: "Skema Database",   desc: "Hubungan antar tabel (ERD) — introspeksi langsung dari MySQL" },
+  "/schema":         { title: "Skema Database",   desc: "Hubungan antar tabel (ERD) — introspeksi langsung dari Supabase Postgres" },
   "/photos":         { title: "Sync Foto Karyawan", desc: "Tarik foto karyawan dari IHCMIS ke aplikasi (cocok via NIP)" },
-  "/sync":           { title: "Sync Data",         desc: "Sinkronisasi harian MySQL → Supabase (tabel inti)" },
   "/users":          { title: "Manajemen User",   desc: "Kelola akun login & hak akses aplikasi" },
   "/settings":       { title: "Settings",         desc: "Konfigurasi sistem & preferensi" },
 };

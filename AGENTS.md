@@ -7,9 +7,9 @@ This version (Next.js 16) has breaking changes — APIs, conventions, and file s
 Internal **Learning & Development (L&D)** platform — kelola program training, peserta/learner, sertifikasi, dan jadwal pelatihan.
 
 - **Stack & styling** diport dari `../kinra-business-performance`: Next 16, React 19, Tailwind v4, framer-motion, lucide-react. Tema dark/light dengan literal-remap di `globals.css`.
-- **Database**: **MySQL** (bukan Supabase). Koneksi via pool `mysql2/promise` di `src/lib/db.ts`. Kredensial di `.env.local` (lihat `.env.example`).
+- **Database**: **Supabase Postgres** (project `agronow`). Koneksi via pool `pg` di `src/lib/db.ts`, dari `SUPABASE_DB_URL` di `.env.local`. Gunakan **transaction pooler (port 6543)**, bukan session pooler (5432) — session pooler dibatasi 15 klien untuk seluruh project & cepat habis (error `EMAXCONNSESSION` → query 500). Route handler memakai placeholder gaya `?` (warisan MySQL) yang otomatis diubah jadi `$1, $2, …` oleh `query()`/`execute()`. Catatan: dulu MySQL (`mysql2/promise`), kini seluruh data dibaca dari Supabase.
 - **Auth**: berbasis tabel sendiri — `app_users` + `app_sessions`, password di-hash `bcryptjs`, sesi via cookie httpOnly (`agronow_session`). Cek optimistik di `src/proxy.ts`, validasi sebenarnya di `/api/auth/me`. Role: `admin` (full) / `viewer` (read-only).
-- **Setup DB**: `npm run db:setup` menjalankan `db/schema.sql` + seed (`scripts/db-setup.mjs`). Default login: `admin` / `admin123`.
+- **Setup DB**: data live ada di Supabase (tabel sync `_member`, `_rekap_classroom_excel`, `_group`, … + auth `app_users`/`app_sessions`); disegarkan via `npm run sync` (`scripts/sync.mjs`). ⚠️ `npm run db:setup` + `db/schema.sql` **usang/MySQL** (driver `mysql2`, env `MYSQL_*` yang sudah tak ada, DDL `AUTO_INCREMENT`/`ENGINE=InnoDB`, seed tabel demo lama) — tak jalan di Postgres, jangan dipakai. Default login: `admin` / `admin123`.
 
 ## Modul
 - **Katalog Training** (`/courses`) + **Enrollment** (`/enrollments`)
