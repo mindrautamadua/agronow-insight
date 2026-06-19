@@ -21,6 +21,23 @@ function missingFields(c: Course): string[] {
   return REQUIRED.filter(f => !f.ok(c)).map(f => f.label);
 }
 
+// Buang entri katalog yang judulnya kembar — sisakan satu saja.
+// Yang dipertahankan: prioritas status aktif, lalu paling lengkap datanya.
+function dedupeByJudul(courses: Course[]): Course[] {
+  const better = (a: Course, b: Course) => {
+    const aktif = (c: Course) => (c.status === "aktif" ? 1 : 0);
+    if (aktif(a) !== aktif(b)) return aktif(a) > aktif(b) ? a : b;
+    return missingFields(a).length <= missingFields(b).length ? a : b;
+  };
+  const byName = new Map<string, Course>();
+  for (const c of courses) {
+    const key = c.judul.trim().toLowerCase();
+    const existing = byName.get(key);
+    byName.set(key, existing ? better(existing, c) : c);
+  }
+  return Array.from(byName.values());
+}
+
 export default function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -35,7 +52,8 @@ export default function CoursesPage() {
   useEffect(() => {
     setLoading(true);
     fetchCourses()
-      .then(data => {
+      .then(raw => {
+        const data = dedupeByJudul(raw);
         setCourses(data);
         setPriceLo(0);
         setPriceHi(data.reduce((m, c) => Math.max(m, c.biaya ?? 0), 0));
@@ -65,7 +83,7 @@ export default function CoursesPage() {
       if (priceLo !== null && biaya < priceLo) return false;
       if (priceHi !== null && biaya > priceHi) return false;
       if (!s) return true;
-      return [c.judul, c.kode, c.kategori].some(v => (v ?? "").toLowerCase().includes(s));
+      return [c.judul, c.kategori].some(v => (v ?? "").toLowerCase().includes(s));
     });
   }, [courses, q, mode, tahun, priceLo, priceHi]);
 
@@ -179,7 +197,6 @@ function CourseTable({ rows, onSelect }: { rows: Course[]; onSelect: (c: Course)
     <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[var(--bg-card)]">
       <table className="w-full table-fixed text-sm min-w-[880px]">
         <colgroup>
-          <col className="w-[112px]" />
           <col />
           <col className="w-[150px]" />
           <col className="w-[64px]" />
@@ -191,8 +208,7 @@ function CourseTable({ rows, onSelect }: { rows: Course[]; onSelect: (c: Course)
         </colgroup>
         <thead>
           <tr className="border-b border-[var(--border)] text-left text-[11px] uppercase tracking-wide text-[var(--muted)]">
-            <Th className="pl-8">Kode</Th>
-            <Th>Judul</Th>
+            <Th className="pl-8">Judul</Th>
             <Th>Kategori</Th>
             <Th className="!text-right">Tahun</Th>
             <Th>Mode</Th>
@@ -212,13 +228,12 @@ function CourseTable({ rows, onSelect }: { rows: Course[]; onSelect: (c: Course)
                 role="button" aria-label={`Lihat detail ${c.judul}`}
                 className={`border-b border-[var(--border)] last:border-0 transition-colors align-middle cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary)]/50 ${
                   incomplete ? "bg-amber-500/[0.06] hover:bg-amber-500/10" : "hover:bg-[var(--bg-card2)]/50"}`}>
-                <td className="py-2 pl-8 pr-3 font-mono text-[11px] text-[var(--muted)] whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1.5" title={incomplete ? `Belum lengkap: ${missing.join(", ")}` : undefined}>
-                    {incomplete && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Data belum lengkap" />}
-                    {c.kode}
+                <td className="py-2 pl-8 pr-3 font-medium text-[var(--foreground)] leading-snug break-words">
+                  <span className="inline-flex items-start gap-1.5" title={incomplete ? `Belum lengkap: ${missing.join(", ")}` : undefined}>
+                    {incomplete && <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" aria-label="Data belum lengkap" />}
+                    {c.judul}
                   </span>
                 </td>
-                <td className="py-2 pr-3 font-medium text-[var(--foreground)] leading-snug break-words">{c.judul}</td>
                 <td className="py-2 pr-3 text-xs leading-snug break-words">
                   {c.kategori ? <span className="text-emerald-400">{c.kategori}</span> : <Empty />}
                 </td>
@@ -275,7 +290,6 @@ function CourseDetailModal({ course: c, onClose }: { course: Course; onClose: ()
               {c.mode && <StatusBadge status={c.mode} />}
             </div>
             <p className="text-[11px] text-[var(--muted)] mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="font-mono">{c.kode}</span>
               {c.tahun && <span className="flex items-center gap-1"><CalendarDays className="w-3 h-3" />{c.tahun}</span>}
               {c.kategori && <span className="flex items-center gap-1 text-emerald-400"><Tag className="w-3 h-3" />{c.kategori}</span>}
               <span className="font-medium text-[var(--foreground)] tabular-nums">{fmtRupiah(c.biaya)}</span>
